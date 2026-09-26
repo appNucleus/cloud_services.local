@@ -42,6 +42,7 @@ for script in scripts/*.sh; do
 done
 
 bash ./scripts/verify-server.sh
+bash ./scripts/sync-runtime-env.sh
 bash ./scripts/validate-runtime-env.sh
 bash ./scripts/generate-pgadmin-config.sh
 
