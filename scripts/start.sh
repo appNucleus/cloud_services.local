@@ -134,6 +134,14 @@ if ! compose "${up_args[@]}" "${core_services[@]}"; then
   exit 1
 fi
 
+# compose --wait already waits for every service with a Docker healthcheck.
+# Do not add a blind sleep before smoke tests: healthy services are ready now,
+# while services without healthchecks are exercised by verify.sh immediately
+# after this script completes.
+if [[ "$wait_for_health" == "true" ]]; then
+  echo "Compose readiness checks passed; continuing without an arbitrary startup sleep."
+fi
+
 if [[ "${RUN_MINIO_INIT:-true}" == "true" ]]; then
   minio_init_container="${MINIO_INIT_CONTAINER_NAME:-db-minio-init}"
 
