@@ -69,6 +69,22 @@ cd "$repo_root"
 printf '\n===== Containers =====\n'
 compose ps
 
+# Exactly one Compose container must exist for each long-running service.
+# Fixed container_name values already prevent same-name duplicates; this also
+# catches accidental scaling/project drift before endpoint tests run.
+for service in postgres pgadmin redis redisinsight neo4j minio elasticmq elasticmq-ui dashboard; do
+  mapfile -t service_ids < <(compose ps -q "$service" | sed '/^[[:space:]]*$/d')
+  if (( ${#service_ids[@]} != 1 )); then
+    echo "Expected exactly one container for service '$service'; found ${#service_ids[@]}." >&2
+    exit 1
+  fi
+  if [[ "$(docker inspect -f '{{.State.Running}}' "${service_ids[0]}")" != "true" ]]; then
+    echo "Container for service '$service' is not running." >&2
+    exit 1
+  fi
+done
+echo "Compose cardinality: exactly one running container per service."
+
 printf '\n===== Dashboard =====\n'
 retry_http "dashboard" "http://${DASHBOARD_HOST_BIND}:${DASHBOARD_PORT}/index.html"
 
