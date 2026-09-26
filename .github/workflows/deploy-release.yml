@@ -152,6 +152,26 @@ jobs:
 
           echo "Docker Compose configuration is valid."
 
+      - name: Preflight candidate images
+        run: |
+          set -euo pipefail
+
+          for image in quay.io/minio/minio:latest quay.io/minio/mc:latest; do
+            if ! docker image inspect "$image" >/dev/null 2>&1; then
+              echo "::error::Required cached image is missing: $image"
+              echo "Refusing to modify the running stack. Install/approve a replacement image first."
+              exit 1
+            fi
+            echo "Cached image available: $image"
+          done
+
+          docker compose \
+            --env-file "$DEPLOY_ENV_FILE" \
+            pull --policy missing \
+            postgres pgadmin redis redisinsight neo4j elasticmq elasticmq-ui dashboard
+
+          echo "Candidate image preflight passed."
+
       - name: Prepare rollback point
         id: prepare_rollback
         run: |
