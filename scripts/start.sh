@@ -33,6 +33,8 @@ core_services=(
   redisinsight
   neo4j
   minio
+  elasticmq
+  elasticmq-ui
   dashboard
 )
 
@@ -43,6 +45,8 @@ known_containers=(
   "${REDISINSIGHT_CONTAINER_NAME:-db-redisinsight}"
   "${NEO4J_CONTAINER_NAME:-db-neo4j}"
   "${MINIO_CONTAINER_NAME:-db-minio}"
+  "${ELASTICMQ_CONTAINER_NAME:-db-elasticmq}"
+  "${ELASTICMQ_UI_CONTAINER_NAME:-db-elasticmq-ui}"
   "${DASHBOARD_CONTAINER_NAME:-db-dashboard}"
   "${MINIO_INIT_CONTAINER_NAME:-db-minio-init}"
 )
