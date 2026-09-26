@@ -156,14 +156,20 @@ jobs:
         run: |
           set -euo pipefail
 
-          for image in quay.io/minio/minio:latest quay.io/minio/mc:latest; do
-            if ! docker image inspect "$image" >/dev/null 2>&1; then
-              echo "::error::Required cached image is missing: $image"
-              echo "Refusing to modify the running stack. Install/approve a replacement image first."
-              exit 1
-            fi
-            echo "Cached image available: $image"
-          done
+          minio_release='RELEASE.2025-10-15T17-29-55Z'
+          minio_image="db-local/minio:$minio_release"
+          if ! docker image inspect "$minio_image" >/dev/null 2>&1; then
+            build_dir="$(mktemp -d)"
+            trap 'rm -rf "$build_dir"' EXIT
+            git clone --depth 1 --branch "$minio_release" https://github.com/minio/minio.git "$build_dir/minio"
+            make -C "$build_dir/minio" docker TAG="$minio_image"
+          fi
+          echo "Pinned MinIO server image available: $minio_image"
+
+          if ! docker image inspect quay.io/minio/mc:latest >/dev/null 2>&1; then
+            echo "::error::Required cached image is missing: quay.io/minio/mc:latest"
+            exit 1
+          fi
 
           mc_release='RELEASE.2025-08-13T08-35-41Z'
           if ! docker run --rm --entrypoint mc quay.io/minio/mc:latest --version 2>&1 | grep -Fq "mc version $mc_release"; then
