@@ -9,7 +9,6 @@ load_runtime_env
 
 POSTGRES_DB="${POSTGRES_DB:-langgraph_app}"
 POSTGRES_USER="${POSTGRES_USER:-langgraph_user}"
-POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-change_me_postgres_2026}"
 PGADMIN_SERVERS_JSON="${PGADMIN_SERVERS_JSON:-./generated/pgadmin/servers.json}"
 
 servers_json_path="$(repo_path "$PGADMIN_SERVERS_JSON")"
@@ -25,7 +24,6 @@ cat > "$servers_json_path" <<JSON
       "Port": 5432,
       "MaintenanceDB": "${POSTGRES_DB}",
       "Username": "${POSTGRES_USER}",
-      "Password": "${POSTGRES_PASSWORD}",
       "SSLMode": "prefer",
       "Favorite": true
     }
@@ -33,5 +31,5 @@ cat > "$servers_json_path" <<JSON
 }
 JSON
 
-chmod 600 "$servers_json_path"
+chmod 644 "$servers_json_path"
 echo "Generated pgAdmin server config: $PGADMIN_SERVERS_JSON"
