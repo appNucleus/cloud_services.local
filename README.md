@@ -236,14 +236,14 @@ docker ps --format "table {{.Names}}\t{{.Ports}}" | grep db-
 Expected DB/admin service mappings:
 
 ```text
-db-pgadmin        443/tcp, 0.0.0.0:5050->80/tcp
+db-pgadmin        443/tcp, 127.0.0.1:5050->80/tcp
 db-postgres       0.0.0.0:5432->5432/tcp
 db-redis          0.0.0.0:6379->6379/tcp
-db-redisinsight   0.0.0.0:5540->5540/tcp
-db-neo4j          0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
-db-minio          0.0.0.0:9000-9001->9000-9001/tcp
+db-redisinsight   127.0.0.1:5540->5540/tcp
+db-neo4j          127.0.0.1:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
+db-minio          0.0.0.0:9000->9000/tcp, 127.0.0.1:9001->9001/tcp
 db-elasticmq      0.0.0.0:9324->9324/tcp
-db-elasticmq-ui   0.0.0.0:9325->3000/tcp
+db-elasticmq-ui   127.0.0.1:9325->3000/tcp
 ```
 
 Expected dashboard mapping:
@@ -423,20 +423,15 @@ Recommended UFW rules with comments:
 ```bash
 sudo ufw allow from 192.168.1.0/24 to any port 22 proto tcp comment 'LAN SSH only'
 
-sudo ufw allow from 192.168.1.0/24 to any port 5050 proto tcp comment 'db.local pgAdmin UI - LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 5432 proto tcp comment 'db.local PostgreSQL pgvector - LAN only'
 
-sudo ufw allow from 192.168.1.0/24 to any port 5540 proto tcp comment 'db.local RedisInsight UI - LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 6379 proto tcp comment 'db.local Redis - LAN only'
 
-sudo ufw allow from 192.168.1.0/24 to any port 7474 proto tcp comment 'db.local Neo4j Browser HTTP - LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 7687 proto tcp comment 'db.local Neo4j Bolt - LAN only'
 
 sudo ufw allow from 192.168.1.0/24 to any port 9000 proto tcp comment 'db.local MinIO S3 API - LAN only'
-sudo ufw allow from 192.168.1.0/24 to any port 9001 proto tcp comment 'db.local MinIO Console - LAN only'
 
 sudo ufw allow from 192.168.1.0/24 to any port 9324 proto tcp comment 'db.local ElasticMQ SQS API - LAN only'
-sudo ufw allow from 192.168.1.0/24 to any port 9325 proto tcp comment 'db.local ElasticMQ UI - LAN only'
 ```
 
 For Caddy, choose one policy.
