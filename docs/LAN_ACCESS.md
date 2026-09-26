@@ -73,6 +73,8 @@ Do not port-forward these DB/admin ports from the router to the internet.
 | Neo4j Bolt | `bolt://dbs.home.arpa:7687` |
 | MinIO S3 API | `http://dbs.home.arpa:9000` |
 | MinIO Console | `http://dbs.home.arpa:9001` |
+| ElasticMQ SQS API | `http://dbs.home.arpa:9324` |
+| ElasticMQ UI | `http://dbs.home.arpa:9325` |
 
 If DNS is not configured yet, use the server IP:
 
@@ -103,6 +105,8 @@ db-redis          0.0.0.0:6379->6379/tcp
 db-redisinsight   0.0.0.0:5540->5540/tcp
 db-neo4j          0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
 db-minio          0.0.0.0:9000-9001->9000-9001/tcp
+db-elasticmq      0.0.0.0:9324->9324/tcp
+db-elasticmq-ui   0.0.0.0:9325->3000/tcp
 ```
 
 Expected dashboard:
@@ -155,6 +159,9 @@ sudo ufw allow from 192.168.1.0/24 to any port 7687 proto tcp comment 'db.local 
 
 sudo ufw allow from 192.168.1.0/24 to any port 9000 proto tcp comment 'db.local MinIO S3 API - LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 9001 proto tcp comment 'db.local MinIO Console - LAN only'
+
+sudo ufw allow from 192.168.1.0/24 to any port 9324 proto tcp comment 'db.local ElasticMQ SQS API - LAN only'
+sudo ufw allow from 192.168.1.0/24 to any port 9325 proto tcp comment 'db.local ElasticMQ UI - LAN only'
 ```
 
 For Caddy, choose one policy.
@@ -205,7 +212,7 @@ For normal home/LAN use, the UFW rules above may be enough. For stricter firewal
 DB/admin ports that need firewall control:
 
 ```text
-5050, 5432, 5540, 6379, 7474, 7687, 9000, 9001
+5050, 5432, 5540, 6379, 7474, 7687, 9000, 9001, 9324, 9325
 ```
 
 Dashboard port `8003` should not be directly exposed to LAN because it is bound to `127.0.0.1`.
@@ -267,6 +274,8 @@ Test-NetConnection dbs.home.arpa -Port 7474
 Test-NetConnection dbs.home.arpa -Port 7687
 Test-NetConnection dbs.home.arpa -Port 9000
 Test-NetConnection dbs.home.arpa -Port 9001
+Test-NetConnection dbs.home.arpa -Port 9324
+Test-NetConnection dbs.home.arpa -Port 9325
 ```
 
 Expected:
