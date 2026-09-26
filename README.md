@@ -142,10 +142,10 @@ This keeps repeated values consistent across Compose, scripts, and GitHub Action
 
 ## Desired network model
 
-This repo uses two different exposure patterns:
+This repo uses two exposure patterns:
 
-1. Dashboard through Caddy only
-2. DB/admin services directly through their native ports
+1. Browser/admin UIs through host Caddy with private `tls internal` HTTPS
+2. Raw application protocols directly on LAN ports where required
 
 ## Dashboard access model
 
@@ -197,17 +197,16 @@ https://dbs.home.arpa
 
 ## DB/admin service access model
 
-DB/admin services should be accessed directly on their native ports, not through Caddy.
-
-Caddy is good for HTTP/HTTPS web apps. It is not the ideal pattern for raw database protocols such as PostgreSQL, Redis, Neo4j Bolt, or S3-compatible MinIO API.
+Browser/admin UIs are localhost-only and accessed through Caddy HTTPS. Raw database/application protocols such as PostgreSQL, Redis, Neo4j Bolt, MinIO S3 API, and ElasticMQ SQS API remain direct LAN services.
 
 Runtime value:
 
 ```env
 DB_HOST_BIND=0.0.0.0
+ADMIN_UI_HOST_BIND=127.0.0.1
 ```
 
-This means Docker publishes DB/admin ports on all host interfaces. Access control must be handled by firewall policy.
+`DB_HOST_BIND` publishes required raw application ports on LAN interfaces. `ADMIN_UI_HOST_BIND` keeps browser/admin ports on localhost so Caddy is their only network entry point.
 
 Do not port-forward these DB/admin ports from the router to the internet.
 
