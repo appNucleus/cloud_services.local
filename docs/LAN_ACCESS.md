@@ -148,20 +148,15 @@ Recommended UFW rules with comments:
 ```bash
 sudo ufw allow from 192.168.1.0/24 to any port 22 proto tcp comment 'LAN SSH only'
 
-sudo ufw allow from 192.168.1.0/24 to any port 5050 proto tcp comment 'db.local pgAdmin UI - LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 5432 proto tcp comment 'db.local PostgreSQL pgvector - LAN only'
 
-sudo ufw allow from 192.168.1.0/24 to any port 5540 proto tcp comment 'db.local RedisInsight UI - LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 6379 proto tcp comment 'db.local Redis - LAN only'
 
-sudo ufw allow from 192.168.1.0/24 to any port 7474 proto tcp comment 'db.local Neo4j Browser HTTP - LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 7687 proto tcp comment 'db.local Neo4j Bolt - LAN only'
 
 sudo ufw allow from 192.168.1.0/24 to any port 9000 proto tcp comment 'db.local MinIO S3 API - LAN only'
-sudo ufw allow from 192.168.1.0/24 to any port 9001 proto tcp comment 'db.local MinIO Console - LAN only'
 
 sudo ufw allow from 192.168.1.0/24 to any port 9324 proto tcp comment 'db.local ElasticMQ SQS API - LAN only'
-sudo ufw allow from 192.168.1.0/24 to any port 9325 proto tcp comment 'db.local ElasticMQ UI - LAN only'
 ```
 
 For Caddy, choose one policy.
@@ -356,3 +351,5 @@ It should resolve to:
 ## Hardened admin UI policy
 
 Set `ADMIN_UI_HOST_BIND=127.0.0.1`. Ports 5050, 5540, 7474, 9001 and 9325 are host-local only and Caddy publishes them via the HTTPS subdomains above. Do not add LAN firewall allows for these localhost-only UI ports. Raw application ports 5432, 6379, 7687, 9000 and 9324 remain LAN-accessible subject to firewall policy.
+
+Caddy hostnames require LAN DNS records (or an appropriate wildcard) resolving `*.dbs.home.arpa` to the DB server. Caddy's `tls internal` certificates are intentionally private; clients may leave the CA untrusted and accept browser warnings as agreed.
