@@ -98,6 +98,12 @@ print_deploy_debug() {
         || true
 
       echo
+      echo "----- $container_name healthcheck history -----"
+      docker inspect "$container_name" \
+        --format '{{if .State.Health}}{{range .State.Health.Log}}Exit={{.ExitCode}} Start={{.Start}} End={{.End}} Output={{printf "%q" .Output}}{{println}}{{end}}{{else}}No Docker healthcheck configured.{{end}}' \
+        || true
+
+      echo
       echo "----- $container_name recent logs -----"
       docker logs "$container_name" --tail "$log_tail" 2>&1 || true
     else
