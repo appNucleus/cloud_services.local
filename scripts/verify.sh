@@ -10,6 +10,9 @@ POSTGRES_CONTAINER_NAME="${POSTGRES_CONTAINER_NAME:-db-postgres}"
 REDIS_CONTAINER_NAME="${REDIS_CONTAINER_NAME:-db-redis}"
 NEO4J_CONTAINER_NAME="${NEO4J_CONTAINER_NAME:-db-neo4j}"
 MINIO_CONTAINER_NAME="${MINIO_CONTAINER_NAME:-db-minio}"
+ELASTICMQ_PORT="${ELASTICMQ_PORT:-9324}"
+ELASTICMQ_UI_PORT="${ELASTICMQ_UI_PORT:-9325}"
+DB_HOST_BIND="${DB_HOST_BIND:-0.0.0.0}"
 POSTGRES_USER="${POSTGRES_USER:-langgraph_user}"
 POSTGRES_DB="${POSTGRES_DB:-langgraph_app}"
 REDIS_PASSWORD="${REDIS_PASSWORD:-change_me_redis_2026}"
@@ -42,5 +45,19 @@ docker exec "$NEO4J_CONTAINER_NAME" cypher-shell -u "$NEO4J_USERNAME" -p "$NEO4J
 printf '\n===== MinIO =====\n'
 docker exec "$MINIO_CONTAINER_NAME" mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null
 docker exec "$MINIO_CONTAINER_NAME" mc ls "local/$MINIO_DEFAULT_BUCKET" >/dev/null || docker exec "$MINIO_CONTAINER_NAME" mc ls local
+
+printf '\n===== ElasticMQ =====\n'
+elasticmq_response="$(curl -fsS -X POST \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  --data 'Action=ListQueues&Version=2012-11-05' \
+  "http://127.0.0.1:${ELASTICMQ_PORT}/")"
+if [[ "$elasticmq_response" != *"ListQueuesResponse"* ]]; then
+  echo "ElasticMQ SQS ListQueues check returned an unexpected response." >&2
+  exit 1
+fi
+echo "elasticmq SQS API: ok"
+
+printf '\n===== ElasticMQ UI =====\n'
+curl -fsS "http://127.0.0.1:${ELASTICMQ_UI_PORT}/" >/dev/null && echo "elasticmq UI: ok"
 
 printf '\nAll checks completed.\n'
