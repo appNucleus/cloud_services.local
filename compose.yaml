@@ -277,6 +277,9 @@ services:
   dashboard:
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
     pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
     mem_limit: ${DASHBOARD_MEMORY_LIMIT:-64m}
     cpus: ${DASHBOARD_CPU_LIMIT:-0.25}
