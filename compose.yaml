@@ -144,6 +144,31 @@ services:
     networks:
       - db_net
 
+  elasticmq:
+    image: softwaremill/elasticmq-native:latest
+    container_name: ${ELASTICMQ_CONTAINER_NAME:-db-elasticmq}
+    restart: unless-stopped
+    ports:
+      - "${DB_HOST_BIND:-0.0.0.0}:${ELASTICMQ_PORT:-9324}:9324"
+    volumes:
+      - elasticmq_data:/data
+      - ${ELASTICMQ_CONFIG_FILE:-./config/elasticmq.conf}:/opt/elasticmq.conf:ro
+    networks:
+      - db_net
+
+  elasticmq-ui:
+    image: softwaremill/elasticmq-ui:latest
+    container_name: ${ELASTICMQ_UI_CONTAINER_NAME:-db-elasticmq-ui}
+    restart: unless-stopped
+    environment:
+      SQS_ENDPOINT: http://elasticmq:9324
+    ports:
+      - "${DB_HOST_BIND:-0.0.0.0}:${ELASTICMQ_UI_PORT:-9325}:3000"
+    depends_on:
+      - elasticmq
+    networks:
+      - db_net
+
   dashboard:
     image: busybox:1.37-musl
     container_name: ${DASHBOARD_CONTAINER_NAME:-db-dashboard}
@@ -211,3 +236,5 @@ volumes:
     name: ${NEO4J_PLUGINS_VOLUME_NAME:-db-neo4j-plugins}
   minio_data:
     name: ${MINIO_VOLUME_NAME:-db-minio-data}
+  elasticmq_data:
+    name: ${ELASTICMQ_VOLUME_NAME:-db-elasticmq-data}
