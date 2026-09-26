@@ -343,9 +343,18 @@
     .redis { color: #fb7185; }
     .neo { color: #34d399; }
     .minio { color: #f87171; }
+    .elasticmq { color: #fbbf24; }
     .aws-orange { color: #fbbf24; }
 
+    .admin-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .admin-grid .section-title { grid-column: 1 / -1; }
+    .admin-grid .card { grid-column: auto; }
+
     @media (max-width: 980px) {
+      .admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .card { grid-column: span 6; }
       .aws { grid-column: span 12; }
       .hero-top { flex-direction: column; }
@@ -355,6 +364,7 @@
     @media (max-width: 640px) {
       .shell { width: min(100% - 22px, 1220px); padding-top: 16px; }
       .hero { padding: 22px; }
+      .admin-grid { grid-template-columns: 1fr; }
       .card { grid-column: span 12; }
       .aws { grid-template-columns: 1fr; }
       .aws-row { grid-template-columns: 1fr; }
@@ -369,7 +379,7 @@
         <div>
           <div class="eyebrow"><span class="pulse"></span> Local Data Platform</div>
           <h1>dbs.home.arpa</h1>
-          <p class="subtitle">PostgreSQL + pgvector, Redis, Neo4j, and MinIO administration dashboard.</p>
+          <p class="subtitle">PostgreSQL + pgvector, Redis, Neo4j, MinIO, and ElasticMQ administration dashboard.</p>
         </div>
         <div class="hero-actions" aria-label="Service bindings">
           <div class="pill">host · dbs.home.arpa</div>
@@ -379,7 +389,7 @@
       </div>
     </section>
 
-    <section class="grid" aria-label="Admin consoles">
+    <section class="grid admin-grid" aria-label="Admin consoles">
       <div class="section-title">
         <h2>Admin consoles</h2>
         <span>click to open</span>
@@ -454,6 +464,24 @@
           </div>
         </a>
       </article>
+
+      <article class="card">
+        <a class="full-link" href="http://dbs.home.arpa:9325" target="_blank" rel="noopener noreferrer" aria-label="Open ElasticMQ UI">
+          <div class="icon elasticmq" aria-hidden="true">
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 18h40v28H12V18Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+              <path d="M20 27h24M20 37h16" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+              <path d="m46 34 6 6-6 6" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>ElasticMQ UI</h3>
+          <p class="role">SQS-compatible queues, messages, attributes, and local queue inspection.</p>
+          <div class="meta">
+            <div class="meta-row"><b>UI</b><code>:9325</code></div>
+            <div class="meta-row"><b>SQS API</b><code>:9324</code></div>
+          </div>
+        </a>
+      </article>
     </section>
 
     <section class="grid" aria-label="AWS compatibility">
@@ -521,6 +549,21 @@
           <div class="tagline"><span class="tag">S3-compatible</span><span class="tag">object storage</span><span class="tag">elastic scale</span></div>
         </div>
       </article>
+
+      <article class="aws">
+        <div class="icon elasticmq" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 18h40v28H12V18Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/><path d="M20 27h24M20 37h16" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="m46 34 6 6-6 6" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <h3>ElasticMQ</h3>
+          <div class="aws-grid">
+            <div class="aws-row"><strong>AWS target</strong><span>Amazon SQS</span></div>
+            <div class="aws-row"><strong>Interface</strong><span>Amazon SQS-compatible API</span></div>
+            <div class="aws-row"><strong>Use case</strong><span>Async jobs, agent tasks, retries, DLQs, and decoupled work queues.</span></div>
+          </div>
+          <div class="tagline"><span class="tag">SQS-compatible</span><span class="tag">message queue</span><span class="tag">local development</span></div>
+        </div>
+      </article>
     </section>
 
     <section class="grid" aria-label="Endpoints">
@@ -566,6 +609,12 @@
               <td><code>http://dbs.home.arpa:9000</code></td>
               <td><code>http://dbs.home.arpa:9001</code></td>
               <td>Amazon S3</td>
+            </tr>
+            <tr>
+              <td>ElasticMQ</td>
+              <td><code>http://dbs.home.arpa:9324</code></td>
+              <td><code>http://dbs.home.arpa:9325</code></td>
+              <td>Amazon SQS</td>
             </tr>
           </tbody>
         </table>
