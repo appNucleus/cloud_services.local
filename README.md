@@ -309,11 +309,11 @@ https://dbs.home.arpa
 The dashboard links should point to the admin panels by hostname and port, for example:
 
 ```text
-http://dbs.home.arpa:5050
-http://dbs.home.arpa:5540
-http://dbs.home.arpa:7474
-http://dbs.home.arpa:9001
-http://dbs.home.arpa:9325
+https://pgadmin.dbs.home.arpa
+https://redis.dbs.home.arpa
+https://neo4j.dbs.home.arpa
+https://minio.dbs.home.arpa
+https://sqs.dbs.home.arpa
 ```
 
 ## Default endpoints
@@ -323,15 +323,15 @@ http://dbs.home.arpa:9325
 | Static dashboard through Caddy | `https://dbs.home.arpa` |
 | Static dashboard direct local only | `http://127.0.0.1:8003` |
 | PostgreSQL | `dbs.home.arpa:5432` |
-| pgAdmin | `http://dbs.home.arpa:5050` |
+| pgAdmin | `https://pgadmin.dbs.home.arpa` |
 | Redis | `dbs.home.arpa:6379` |
-| RedisInsight | `http://dbs.home.arpa:5540` |
-| Neo4j Browser | `http://dbs.home.arpa:7474` |
+| RedisInsight | `https://redis.dbs.home.arpa` |
+| Neo4j Browser | `https://neo4j.dbs.home.arpa` |
 | Neo4j Bolt | `bolt://dbs.home.arpa:7687` |
 | MinIO S3 API | `http://dbs.home.arpa:9000` |
-| MinIO Console | `http://dbs.home.arpa:9001` |
+| MinIO Console | `https://minio.dbs.home.arpa` |
 | ElasticMQ SQS API | `http://dbs.home.arpa:9324` |
-| ElasticMQ UI | `http://dbs.home.arpa:9325` |
+| ElasticMQ UI | `https://sqs.dbs.home.arpa` |
 
 If DNS is not configured yet, use the server IP:
 
@@ -399,15 +399,15 @@ DB/admin services are intended to be reachable directly from the LAN:
 |---|---|
 | Static dashboard through Caddy | `https://dbs.home.arpa` |
 | PostgreSQL | `dbs.home.arpa:5432` |
-| pgAdmin | `http://dbs.home.arpa:5050` |
+| pgAdmin | `https://pgadmin.dbs.home.arpa` |
 | Redis | `dbs.home.arpa:6379` |
-| RedisInsight | `http://dbs.home.arpa:5540` |
-| Neo4j Browser | `http://dbs.home.arpa:7474` |
+| RedisInsight | `https://redis.dbs.home.arpa` |
+| Neo4j Browser | `https://neo4j.dbs.home.arpa` |
 | Neo4j Bolt | `bolt://dbs.home.arpa:7687` |
 | MinIO S3 API | `http://dbs.home.arpa:9000` |
-| MinIO Console | `http://dbs.home.arpa:9001` |
+| MinIO Console | `https://minio.dbs.home.arpa` |
 | ElasticMQ SQS API | `http://dbs.home.arpa:9324` |
-| ElasticMQ UI | `http://dbs.home.arpa:9325` |
+| ElasticMQ UI | `https://sqs.dbs.home.arpa` |
 
 Do not port-forward these DB/admin ports from your router to the internet.
 
@@ -635,9 +635,18 @@ http://dbs.home.arpa:9324
 The official ElasticMQ UI is available at:
 
 ```text
-http://dbs.home.arpa:9325
+https://sqs.dbs.home.arpa
 ```
 
 Containers on the shared `db-local-net` network should use `http://elasticmq:9324` instead of routing through the host. The local stack persists ElasticMQ message storage in the `db-elasticmq-data` Docker volume.
 
 For local AWS SDK clients, use dummy credentials such as `test` and set the SQS endpoint override to ElasticMQ. In AWS production, remove the endpoint override so the SDK uses Amazon SQS normally.
+
+
+## Hardening profile
+
+The hardened deployment keeps raw application protocols on LAN ports while binding all browser/admin UIs to localhost and publishing them through host Caddy with private `tls internal` HTTPS. See `docs/Caddyfile.internal.example` and `docs/OPERATIONS.md`.
+
+Deployment requires at least 5 GiB free disk, rotates Docker logs, applies conservative CPU/memory/PID limits, validates all services, refuses placeholder passwords, and keeps exactly one successful deployment rollback snapshot. Database volumes are preserved across deployments. Explicit data-backup scripts use count-based retention.
+
+Runtime images are pinned to reviewed stable/LTS versions instead of floating `:latest` tags. Update versions deliberately through a reviewed change.
