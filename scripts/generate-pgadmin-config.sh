@@ -33,5 +33,5 @@ cat > "$servers_json_path" <<JSON
 }
 JSON
 
-chmod 644 "$servers_json_path"
+chmod 600 "$servers_json_path"
 echo "Generated pgAdmin server config: $PGADMIN_SERVERS_JSON"
