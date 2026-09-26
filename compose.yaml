@@ -184,7 +184,8 @@ services:
       options:
         max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
         max-file: "${DOCKER_LOG_MAX_FILE:-3}"
-    image: minio/minio:latest
+    image: quay.io/minio/minio:latest
+    pull_policy: never
     container_name: ${MINIO_CONTAINER_NAME:-db-minio}
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -263,16 +264,15 @@ services:
       options:
         max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
         max-file: "${DOCKER_LOG_MAX_FILE:-3}"
-    image: busybox:1.37-musl
+    image: nginx:1.28-alpine
     container_name: ${DASHBOARD_CONTAINER_NAME:-db-dashboard}
     restart: unless-stopped
-    command: ["httpd", "-f", "-v", "-p", "8080", "-h", "/www"]
     ports:
-      - "${DASHBOARD_HOST_BIND:-127.0.0.1}:${DASHBOARD_PORT:-8003}:8080"
+      - "${DASHBOARD_HOST_BIND:-127.0.0.1}:${DASHBOARD_PORT:-8003}:80"
     volumes:
-      - ${DASHBOARD_WWW_DIR:-./www}:/www:ro
+      - ${DASHBOARD_WWW_DIR:-./www}:/usr/share/nginx/html:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/index.html || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/index.html || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -290,7 +290,8 @@ services:
       options:
         max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
         max-file: "${DOCKER_LOG_MAX_FILE:-3}"
-    image: minio/mc:RELEASE.2025-07-16T15-35-03Z
+    image: quay.io/minio/mc:latest
+    pull_policy: never
     container_name: ${MINIO_INIT_CONTAINER_NAME:-db-minio-init}
     restart: "no"
     environment:
