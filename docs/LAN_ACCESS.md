@@ -65,16 +65,16 @@ Do not port-forward these DB/admin ports from the router to the internet.
 | Service | Endpoint |
 |---|---|
 | Dashboard through Caddy | `https://dbs.home.arpa` |
-| pgAdmin | `http://dbs.home.arpa:5050` |
+| pgAdmin | `https://pgadmin.dbs.home.arpa` |
 | PostgreSQL + pgvector | `dbs.home.arpa:5432` |
-| RedisInsight | `http://dbs.home.arpa:5540` |
+| RedisInsight | `https://redis.dbs.home.arpa` |
 | Redis | `dbs.home.arpa:6379` |
-| Neo4j Browser | `http://dbs.home.arpa:7474` |
+| Neo4j Browser | `https://neo4j.dbs.home.arpa` |
 | Neo4j Bolt | `bolt://dbs.home.arpa:7687` |
 | MinIO S3 API | `http://dbs.home.arpa:9000` |
-| MinIO Console | `http://dbs.home.arpa:9001` |
+| MinIO Console | `https://minio.dbs.home.arpa` |
 | ElasticMQ SQS API | `http://dbs.home.arpa:9324` |
-| ElasticMQ UI | `http://dbs.home.arpa:9325` |
+| ElasticMQ UI | `https://sqs.dbs.home.arpa` |
 
 If DNS is not configured yet, use the server IP:
 
@@ -99,14 +99,14 @@ docker ps --format "table {{.Names}}\t{{.Ports}}" | grep db-
 Expected DB/admin services:
 
 ```text
-db-pgadmin        443/tcp, 0.0.0.0:5050->80/tcp
+db-pgadmin        443/tcp, 127.0.0.1:5050->80/tcp
 db-postgres       0.0.0.0:5432->5432/tcp
 db-redis          0.0.0.0:6379->6379/tcp
-db-redisinsight   0.0.0.0:5540->5540/tcp
-db-neo4j          0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
-db-minio          0.0.0.0:9000-9001->9000-9001/tcp
+db-redisinsight   127.0.0.1:5540->5540/tcp
+db-neo4j          127.0.0.1:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
+db-minio          0.0.0.0:9000->9000/tcp, 127.0.0.1:9001->9001/tcp
 db-elasticmq      0.0.0.0:9324->9324/tcp
-db-elasticmq-ui   0.0.0.0:9325->3000/tcp
+db-elasticmq-ui   127.0.0.1:9325->3000/tcp
 ```
 
 Expected dashboard:
@@ -148,20 +148,15 @@ Recommended UFW rules with comments:
 ```bash
 sudo ufw allow from 192.168.1.0/24 to any port 22 proto tcp comment 'LAN SSH only'
 
-sudo ufw allow from 192.168.1.0/24 to any port 5050 proto tcp comment 'db.local pgAdmin UI - LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 5432 proto tcp comment 'db.local PostgreSQL pgvector - LAN only'
 
-sudo ufw allow from 192.168.1.0/24 to any port 5540 proto tcp comment 'db.local RedisInsight UI - LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 6379 proto tcp comment 'db.local Redis - LAN only'
 
-sudo ufw allow from 192.168.1.0/24 to any port 7474 proto tcp comment 'db.local Neo4j Browser HTTP - LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 7687 proto tcp comment 'db.local Neo4j Bolt - LAN only'
 
 sudo ufw allow from 192.168.1.0/24 to any port 9000 proto tcp comment 'db.local MinIO S3 API - LAN only'
-sudo ufw allow from 192.168.1.0/24 to any port 9001 proto tcp comment 'db.local MinIO Console - LAN only'
 
 sudo ufw allow from 192.168.1.0/24 to any port 9324 proto tcp comment 'db.local ElasticMQ SQS API - LAN only'
-sudo ufw allow from 192.168.1.0/24 to any port 9325 proto tcp comment 'db.local ElasticMQ UI - LAN only'
 ```
 
 For Caddy, choose one policy.
@@ -351,3 +346,10 @@ It should resolve to:
 ```text
 192.168.1.126
 ```
+
+
+## Hardened admin UI policy
+
+Set `ADMIN_UI_HOST_BIND=127.0.0.1`. Ports 5050, 5540, 7474, 9001 and 9325 are host-local only and Caddy publishes them via the HTTPS subdomains above. Do not add LAN firewall allows for these localhost-only UI ports. Raw application ports 5432, 6379, 7687, 9000 and 9324 remain LAN-accessible subject to firewall policy.
+
+Caddy hostnames require LAN DNS records (or an appropriate wildcard) resolving `*.dbs.home.arpa` to the DB server. Caddy's `tls internal` certificates are intentionally private; clients may leave the CA untrusted and accept browser warnings as agreed.

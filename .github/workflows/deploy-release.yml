@@ -101,6 +101,7 @@ jobs:
           set_runtime_env_value_if_missing RUN_MINIO_INIT 'true' "$DEPLOY_ENV_FILE"
 
           set_runtime_env_value DB_HOST_BIND '0.0.0.0' "$DEPLOY_ENV_FILE"
+          set_runtime_env_value ADMIN_UI_HOST_BIND '127.0.0.1' "$DEPLOY_ENV_FILE"
           set_runtime_env_value DASHBOARD_HOST_BIND '127.0.0.1' "$DEPLOY_ENV_FILE"
           set_runtime_env_value DASHBOARD_PORT '8003' "$DEPLOY_ENV_FILE"
 
@@ -127,6 +128,16 @@ jobs:
 
           echo "Actions root: $ACTIONS_ROOT"
           echo "Backup root:  $BACKUP_ROOT"
+
+      - name: Migrate runtime environment keys
+        run: |
+          set -euo pipefail
+          bash ./scripts/sync-runtime-env.sh
+
+      - name: Validate runtime policy
+        run: |
+          set -euo pipefail
+          bash ./scripts/validate-runtime-env.sh
 
       - name: Validate candidate Compose configuration
         run: |

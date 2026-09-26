@@ -142,10 +142,10 @@ This keeps repeated values consistent across Compose, scripts, and GitHub Action
 
 ## Desired network model
 
-This repo uses two different exposure patterns:
+This repo uses two exposure patterns:
 
-1. Dashboard through Caddy only
-2. DB/admin services directly through their native ports
+1. Browser/admin UIs through host Caddy with private `tls internal` HTTPS
+2. Raw application protocols directly on LAN ports where required
 
 ## Dashboard access model
 
@@ -197,17 +197,16 @@ https://dbs.home.arpa
 
 ## DB/admin service access model
 
-DB/admin services should be accessed directly on their native ports, not through Caddy.
-
-Caddy is good for HTTP/HTTPS web apps. It is not the ideal pattern for raw database protocols such as PostgreSQL, Redis, Neo4j Bolt, or S3-compatible MinIO API.
+Browser/admin UIs are localhost-only and accessed through Caddy HTTPS. Raw database/application protocols such as PostgreSQL, Redis, Neo4j Bolt, MinIO S3 API, and ElasticMQ SQS API remain direct LAN services.
 
 Runtime value:
 
 ```env
 DB_HOST_BIND=0.0.0.0
+ADMIN_UI_HOST_BIND=127.0.0.1
 ```
 
-This means Docker publishes DB/admin ports on all host interfaces. Access control must be handled by firewall policy.
+`DB_HOST_BIND` publishes required raw application ports on LAN interfaces. `ADMIN_UI_HOST_BIND` keeps browser/admin ports on localhost so Caddy is their only network entry point.
 
 Do not port-forward these DB/admin ports from the router to the internet.
 
@@ -237,14 +236,14 @@ docker ps --format "table {{.Names}}\t{{.Ports}}" | grep db-
 Expected DB/admin service mappings:
 
 ```text
-db-pgadmin        443/tcp, 0.0.0.0:5050->80/tcp
+db-pgadmin        443/tcp, 127.0.0.1:5050->80/tcp
 db-postgres       0.0.0.0:5432->5432/tcp
 db-redis          0.0.0.0:6379->6379/tcp
-db-redisinsight   0.0.0.0:5540->5540/tcp
-db-neo4j          0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
-db-minio          0.0.0.0:9000-9001->9000-9001/tcp
+db-redisinsight   127.0.0.1:5540->5540/tcp
+db-neo4j          127.0.0.1:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
+db-minio          0.0.0.0:9000->9000/tcp, 127.0.0.1:9001->9001/tcp
 db-elasticmq      0.0.0.0:9324->9324/tcp
-db-elasticmq-ui   0.0.0.0:9325->3000/tcp
+db-elasticmq-ui   127.0.0.1:9325->3000/tcp
 ```
 
 Expected dashboard mapping:
@@ -309,11 +308,11 @@ https://dbs.home.arpa
 The dashboard links should point to the admin panels by hostname and port, for example:
 
 ```text
-http://dbs.home.arpa:5050
-http://dbs.home.arpa:5540
-http://dbs.home.arpa:7474
-http://dbs.home.arpa:9001
-http://dbs.home.arpa:9325
+https://pgadmin.dbs.home.arpa
+https://redis.dbs.home.arpa
+https://neo4j.dbs.home.arpa
+https://minio.dbs.home.arpa
+https://sqs.dbs.home.arpa
 ```
 
 ## Default endpoints
@@ -323,15 +322,15 @@ http://dbs.home.arpa:9325
 | Static dashboard through Caddy | `https://dbs.home.arpa` |
 | Static dashboard direct local only | `http://127.0.0.1:8003` |
 | PostgreSQL | `dbs.home.arpa:5432` |
-| pgAdmin | `http://dbs.home.arpa:5050` |
+| pgAdmin | `https://pgadmin.dbs.home.arpa` |
 | Redis | `dbs.home.arpa:6379` |
-| RedisInsight | `http://dbs.home.arpa:5540` |
-| Neo4j Browser | `http://dbs.home.arpa:7474` |
+| RedisInsight | `https://redis.dbs.home.arpa` |
+| Neo4j Browser | `https://neo4j.dbs.home.arpa` |
 | Neo4j Bolt | `bolt://dbs.home.arpa:7687` |
 | MinIO S3 API | `http://dbs.home.arpa:9000` |
-| MinIO Console | `http://dbs.home.arpa:9001` |
+| MinIO Console | `https://minio.dbs.home.arpa` |
 | ElasticMQ SQS API | `http://dbs.home.arpa:9324` |
-| ElasticMQ UI | `http://dbs.home.arpa:9325` |
+| ElasticMQ UI | `https://sqs.dbs.home.arpa` |
 
 If DNS is not configured yet, use the server IP:
 
@@ -399,15 +398,15 @@ DB/admin services are intended to be reachable directly from the LAN:
 |---|---|
 | Static dashboard through Caddy | `https://dbs.home.arpa` |
 | PostgreSQL | `dbs.home.arpa:5432` |
-| pgAdmin | `http://dbs.home.arpa:5050` |
+| pgAdmin | `https://pgadmin.dbs.home.arpa` |
 | Redis | `dbs.home.arpa:6379` |
-| RedisInsight | `http://dbs.home.arpa:5540` |
-| Neo4j Browser | `http://dbs.home.arpa:7474` |
+| RedisInsight | `https://redis.dbs.home.arpa` |
+| Neo4j Browser | `https://neo4j.dbs.home.arpa` |
 | Neo4j Bolt | `bolt://dbs.home.arpa:7687` |
 | MinIO S3 API | `http://dbs.home.arpa:9000` |
-| MinIO Console | `http://dbs.home.arpa:9001` |
+| MinIO Console | `https://minio.dbs.home.arpa` |
 | ElasticMQ SQS API | `http://dbs.home.arpa:9324` |
-| ElasticMQ UI | `http://dbs.home.arpa:9325` |
+| ElasticMQ UI | `https://sqs.dbs.home.arpa` |
 
 Do not port-forward these DB/admin ports from your router to the internet.
 
@@ -424,20 +423,15 @@ Recommended UFW rules with comments:
 ```bash
 sudo ufw allow from 192.168.1.0/24 to any port 22 proto tcp comment 'LAN SSH only'
 
-sudo ufw allow from 192.168.1.0/24 to any port 5050 proto tcp comment 'db.local pgAdmin UI - LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 5432 proto tcp comment 'db.local PostgreSQL pgvector - LAN only'
 
-sudo ufw allow from 192.168.1.0/24 to any port 5540 proto tcp comment 'db.local RedisInsight UI - LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 6379 proto tcp comment 'db.local Redis - LAN only'
 
-sudo ufw allow from 192.168.1.0/24 to any port 7474 proto tcp comment 'db.local Neo4j Browser HTTP - LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 7687 proto tcp comment 'db.local Neo4j Bolt - LAN only'
 
 sudo ufw allow from 192.168.1.0/24 to any port 9000 proto tcp comment 'db.local MinIO S3 API - LAN only'
-sudo ufw allow from 192.168.1.0/24 to any port 9001 proto tcp comment 'db.local MinIO Console - LAN only'
 
 sudo ufw allow from 192.168.1.0/24 to any port 9324 proto tcp comment 'db.local ElasticMQ SQS API - LAN only'
-sudo ufw allow from 192.168.1.0/24 to any port 9325 proto tcp comment 'db.local ElasticMQ UI - LAN only'
 ```
 
 For Caddy, choose one policy.
@@ -635,9 +629,18 @@ http://dbs.home.arpa:9324
 The official ElasticMQ UI is available at:
 
 ```text
-http://dbs.home.arpa:9325
+https://sqs.dbs.home.arpa
 ```
 
 Containers on the shared `db-local-net` network should use `http://elasticmq:9324` instead of routing through the host. The local stack persists ElasticMQ message storage in the `db-elasticmq-data` Docker volume.
 
 For local AWS SDK clients, use dummy credentials such as `test` and set the SQS endpoint override to ElasticMQ. In AWS production, remove the endpoint override so the SDK uses Amazon SQS normally.
+
+
+## Hardening profile
+
+The hardened deployment keeps raw application protocols on LAN ports while binding all browser/admin UIs to localhost and publishing them through host Caddy with private `tls internal` HTTPS. See `docs/Caddyfile.internal.example` and `docs/OPERATIONS.md`.
+
+Deployment requires at least 5 GiB free disk, rotates Docker logs, applies conservative CPU/memory/PID limits, validates all services, refuses placeholder passwords, and keeps exactly one successful deployment rollback snapshot. Database volumes are preserved across deployments. Explicit data-backup scripts use count-based retention.
+
+Runtime images are pinned to reviewed stable/LTS versions instead of floating `:latest` tags. Update versions deliberately through a reviewed change.

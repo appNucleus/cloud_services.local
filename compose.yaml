@@ -2,6 +2,16 @@ name: ${COMPOSE_PROJECT_NAME:-db-local-stack}
 
 services:
   postgres:
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
+    mem_limit: ${POSTGRES_MEMORY_LIMIT:-2g}
+    cpus: ${POSTGRES_CPU_LIMIT:-2.0}
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
     image: pgvector/pgvector:0.8.4-pg17
     container_name: ${POSTGRES_CONTAINER_NAME:-db-postgres}
     restart: unless-stopped
@@ -23,7 +33,17 @@ services:
       - db_net
 
   pgadmin:
-    image: dpage/pgadmin4:latest
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
+    mem_limit: ${PGADMIN_MEMORY_LIMIT:-768m}
+    cpus: ${PGADMIN_CPU_LIMIT:-1.0}
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+    image: dpage/pgadmin4:9.18
     container_name: ${PGADMIN_CONTAINER_NAME:-db-pgadmin}
     restart: unless-stopped
     environment:
@@ -34,18 +54,34 @@ services:
       PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
       PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
     ports:
-      - "${DB_HOST_BIND:-0.0.0.0}:${PGADMIN_PORT:-5050}:80"
+      - "${ADMIN_UI_HOST_BIND:-127.0.0.1}:${PGADMIN_PORT:-5050}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
       - ${PGADMIN_SERVERS_JSON:-./generated/pgadmin/servers.json}:/pgadmin4/servers.json:ro
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/misc/ping || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     networks:
       - db_net
 
   redis:
-    image: redis:7-alpine
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
+    mem_limit: ${REDIS_MEMORY_LIMIT:-1g}
+    cpus: ${REDIS_CPU_LIMIT:-1.0}
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+    image: redis:7.4.11-alpine
     container_name: ${REDIS_CONTAINER_NAME:-db-redis}
     restart: unless-stopped
     environment:
@@ -53,7 +89,7 @@ services:
     command:
       - sh
       - -c
-      - redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes
+      - redis-server --requirepass "${REDIS_PASSWORD}" --appendonly yes --maxmemory "${REDIS_MAXMEMORY:-512mb}" --maxmemory-policy "${REDIS_MAXMEMORY_POLICY:-allkeys-lru}"
     ports:
       - "${DB_HOST_BIND:-0.0.0.0}:${REDIS_PORT:-6379}:6379"
     volumes:
@@ -67,7 +103,17 @@ services:
       - db_net
 
   redisinsight:
-    image: redis/redisinsight:latest
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
+    mem_limit: ${REDISINSIGHT_MEMORY_LIMIT:-768m}
+    cpus: ${REDISINSIGHT_CPU_LIMIT:-1.0}
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+    image: redis/redisinsight:3.8.0
     container_name: ${REDISINSIGHT_CONTAINER_NAME:-db-redisinsight}
     restart: unless-stopped
     environment:
@@ -83,17 +129,33 @@ services:
       RI_REDIS_TLS: "false"
       RI_REDIS_DB: 0
     ports:
-      - "${DB_HOST_BIND:-0.0.0.0}:${REDISINSIGHT_PORT:-5540}:5540"
+      - "${ADMIN_UI_HOST_BIND:-127.0.0.1}:${REDISINSIGHT_PORT:-5540}:5540"
     volumes:
       - redisinsight_data:/data
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5540/api/health/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     networks:
       - db_net
 
   neo4j:
-    image: neo4j:5-community
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
+    mem_limit: ${NEO4J_MEMORY_LIMIT:-2560m}
+    cpus: ${NEO4J_CPU_LIMIT:-2.0}
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+    image: neo4j:5.26.31-community
     container_name: ${NEO4J_CONTAINER_NAME:-db-neo4j}
     restart: unless-stopped
     environment:
@@ -102,7 +164,7 @@ services:
       NEO4J_server_memory_heap_max__size: ${NEO4J_HEAP_MAX:-1G}
       NEO4J_server_memory_pagecache_size: ${NEO4J_PAGECACHE:-512m}
     ports:
-      - "${DB_HOST_BIND:-0.0.0.0}:${NEO4J_HTTP_PORT:-7474}:7474"
+      - "${ADMIN_UI_HOST_BIND:-127.0.0.1}:${NEO4J_HTTP_PORT:-7474}:7474"
       - "${DB_HOST_BIND:-0.0.0.0}:${NEO4J_BOLT_PORT:-7687}:7687"
     volumes:
       - neo4j_data:/data
@@ -124,7 +186,17 @@ services:
       - db_net
 
   minio:
-    image: quay.io/minio/minio:latest
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
+    mem_limit: ${MINIO_MEMORY_LIMIT:-1536m}
+    cpus: ${MINIO_CPU_LIMIT:-1.5}
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+    image: quay.io/minio/minio:RELEASE.2025-10-15T17-29-55Z
     container_name: ${MINIO_CONTAINER_NAME:-db-minio}
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -133,7 +205,7 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-change_me_minio_2026}
     ports:
       - "${DB_HOST_BIND:-0.0.0.0}:${MINIO_API_PORT:-9000}:9000"
-      - "${DB_HOST_BIND:-0.0.0.0}:${MINIO_CONSOLE_PORT:-9001}:9001"
+      - "${ADMIN_UI_HOST_BIND:-127.0.0.1}:${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -145,7 +217,17 @@ services:
       - db_net
 
   elasticmq:
-    image: softwaremill/elasticmq-native:latest
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
+    mem_limit: ${ELASTICMQ_MEMORY_LIMIT:-768m}
+    cpus: ${ELASTICMQ_CPU_LIMIT:-1.0}
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+    image: softwaremill/elasticmq-native:1.7.1
     container_name: ${ELASTICMQ_CONTAINER_NAME:-db-elasticmq}
     restart: unless-stopped
     ports:
@@ -153,23 +235,59 @@ services:
     volumes:
       - elasticmq_data:/data
       - ${ELASTICMQ_CONFIG_FILE:-./config/elasticmq.conf}:/opt/elasticmq.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - 'http://127.0.0.1:9324/?Action=ListQueues&Version=2012-11-05' | grep -q ListQueuesResponse"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
     networks:
       - db_net
 
   elasticmq-ui:
-    image: softwaremill/elasticmq-ui:latest
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
+    mem_limit: ${ELASTICMQ_UI_MEMORY_LIMIT:-512m}
+    cpus: ${ELASTICMQ_UI_CPU_LIMIT:-0.5}
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+    image: softwaremill/elasticmq-ui:1.7.1
     container_name: ${ELASTICMQ_UI_CONTAINER_NAME:-db-elasticmq-ui}
     restart: unless-stopped
     environment:
       SQS_ENDPOINT: http://elasticmq:9324
     ports:
-      - "${DB_HOST_BIND:-0.0.0.0}:${ELASTICMQ_UI_PORT:-9325}:3000"
+      - "${ADMIN_UI_HOST_BIND:-127.0.0.1}:${ELASTICMQ_UI_PORT:-9325}:3000"
     depends_on:
-      - elasticmq
+      elasticmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     networks:
       - db_net
 
   dashboard:
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
+    mem_limit: ${DASHBOARD_MEMORY_LIMIT:-64m}
+    cpus: ${DASHBOARD_CPU_LIMIT:-0.25}
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
     image: busybox:1.37-musl
     container_name: ${DASHBOARD_CONTAINER_NAME:-db-dashboard}
     restart: unless-stopped
@@ -187,7 +305,17 @@ services:
       - db_net
 
   minio-init:
-    image: quay.io/minio/mc:latest
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
+    mem_limit: ${MINIO_INIT_MEMORY_LIMIT:-256m}
+    cpus: ${MINIO_INIT_CPU_LIMIT:-0.5}
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
     container_name: ${MINIO_INIT_CONTAINER_NAME:-db-minio-init}
     restart: "no"
     environment:
