@@ -129,6 +129,11 @@ jobs:
           echo "Actions root: $ACTIONS_ROOT"
           echo "Backup root:  $BACKUP_ROOT"
 
+      - name: Migrate runtime environment keys
+        run: |
+          set -euo pipefail
+          bash ./scripts/sync-runtime-env.sh
+
       - name: Validate runtime policy
         run: |
           set -euo pipefail
