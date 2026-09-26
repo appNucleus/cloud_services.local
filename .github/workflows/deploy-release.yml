@@ -156,7 +156,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          for image in quay.io/minio/minio:latest quay.io/minio/mc:latest; do
+          for image in quay.io/minio/minio:latest quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z; do
             if ! docker image inspect "$image" >/dev/null 2>&1; then
               echo "::error::Required cached image is missing: $image"
               echo "Refusing to modify the running stack. Install/approve a replacement image first."
