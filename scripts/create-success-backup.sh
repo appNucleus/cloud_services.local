@@ -62,6 +62,8 @@ container_names=(
   "${REDISINSIGHT_CONTAINER_NAME:-db-redisinsight}"
   "${NEO4J_CONTAINER_NAME:-db-neo4j}"
   "${MINIO_CONTAINER_NAME:-db-minio}"
+  "${ELASTICMQ_CONTAINER_NAME:-db-elasticmq}"
+  "${ELASTICMQ_UI_CONTAINER_NAME:-db-elasticmq-ui}"
   "${DASHBOARD_CONTAINER_NAME:-db-dashboard}"
 )
 
