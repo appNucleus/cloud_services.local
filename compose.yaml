@@ -89,7 +89,7 @@ services:
     command:
       - sh
       - -c
-      - redis-server --requirepass "$REDIS_PASSWORD" --appendonly yes --maxmemory "${REDIS_MAXMEMORY:-512mb}" --maxmemory-policy "${REDIS_MAXMEMORY_POLICY:-allkeys-lru}"
+      - redis-server --requirepass "${REDIS_PASSWORD}" --appendonly yes --maxmemory "${REDIS_MAXMEMORY:-512mb}" --maxmemory-policy "${REDIS_MAXMEMORY_POLICY:-allkeys-lru}"
     ports:
       - "${DB_HOST_BIND:-0.0.0.0}:${REDIS_PORT:-6379}:6379"
     volumes:
