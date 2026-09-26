@@ -65,16 +65,16 @@ Do not port-forward these DB/admin ports from the router to the internet.
 | Service | Endpoint |
 |---|---|
 | Dashboard through Caddy | `https://dbs.home.arpa` |
-| pgAdmin | `http://dbs.home.arpa:5050` |
+| pgAdmin | `https://pgadmin.dbs.home.arpa` |
 | PostgreSQL + pgvector | `dbs.home.arpa:5432` |
-| RedisInsight | `http://dbs.home.arpa:5540` |
+| RedisInsight | `https://redis.dbs.home.arpa` |
 | Redis | `dbs.home.arpa:6379` |
-| Neo4j Browser | `http://dbs.home.arpa:7474` |
+| Neo4j Browser | `https://neo4j.dbs.home.arpa` |
 | Neo4j Bolt | `bolt://dbs.home.arpa:7687` |
 | MinIO S3 API | `http://dbs.home.arpa:9000` |
-| MinIO Console | `http://dbs.home.arpa:9001` |
+| MinIO Console | `https://minio.dbs.home.arpa` |
 | ElasticMQ SQS API | `http://dbs.home.arpa:9324` |
-| ElasticMQ UI | `http://dbs.home.arpa:9325` |
+| ElasticMQ UI | `https://sqs.dbs.home.arpa` |
 
 If DNS is not configured yet, use the server IP:
 
