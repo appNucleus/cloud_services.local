@@ -210,12 +210,31 @@ jobs:
             ps
 
           echo
+          echo "Container healthcheck diagnostics:"
+          for container_name in $(docker ps -a --filter "name=db-" --format '{{.Names}}'); do
+            echo
+            echo "----- $container_name -----"
+            docker inspect "$container_name" \
+              --format 'Status={{.State.Status}} ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}} Restarting={{.State.Restarting}} Health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
+              || true
+            docker inspect "$container_name" \
+              --format '{{if .State.Health}}{{range .State.Health.Log}}Exit={{.ExitCode}} Start={{.Start}} End={{.End}} Output={{printf "%q" .Output}}{{println}}{{end}}{{else}}No Docker healthcheck configured.{{end}}' \
+              || true
+          done
+
+          echo
+          echo "Host resource snapshot:"
+          df -h "$HOME" || true
+          free -h || true
+          docker system df || true
+
+          echo
           echo "Recent Docker Compose logs:"
           docker compose \
             --env-file "$deploy_env_file" \
             logs \
             --no-color \
-            --tail=120
+            --tail="${DEPLOY_LOG_TAIL:-200}"
 
           echo
           echo "Backup directories:"
