@@ -1,6 +1,6 @@
 # db.local
 
-Local Docker database/storage stack for a LangGraph/FastAPI/LLM app, with GitHub Actions deployment and automatic rollback support.
+Local Docker database/storage/messaging stack for a LangGraph/FastAPI/LLM app, with GitHub Actions deployment and automatic rollback support.
 
 This repo provides the local DB/storage layer for the home server.
 
@@ -14,13 +14,15 @@ Long-running containers in this stack:
 4. `db-redisinsight` - RedisInsight Redis admin UI
 5. `db-neo4j` - Neo4j Community + Neo4j Browser
 6. `db-minio` - MinIO S3-compatible object storage + console
-7. `db-dashboard` - tiny BusyBox static HTML launcher page
+7. `db-elasticmq` - ElasticMQ SQS-compatible local message queue
+8. `db-elasticmq-ui` - official ElasticMQ web UI for queues and messages
+9. `db-dashboard` - tiny BusyBox static HTML launcher page
 
 Temporary one-shot container:
 
 - `db-minio-init` - creates the default MinIO bucket, then exits
 
-PostgreSQL and Redis do not include full web admin panels inside their own DB containers, so this project adds `pgAdmin` and `RedisInsight`.
+PostgreSQL and Redis do not include full web admin panels inside their own DB containers, so this project adds `pgAdmin` and `RedisInsight`. ElasticMQ uses SoftwareMill's official `elasticmq-ui` image.
 
 `db-minio-init` is intentionally not long-running. It runs after MinIO is healthy, creates the configured bucket, exits with code `0`, and is removed.
 
@@ -134,6 +136,7 @@ The `.env.example` file controls:
 - service ports
 - default usernames/passwords
 - MinIO default bucket
+- ElasticMQ API/UI ports and persistent storage volume
 
 This keeps repeated values consistent across Compose, scripts, and GitHub Actions.
 
@@ -220,6 +223,8 @@ Expected DB/admin ports:
 | Neo4j Bolt | `7687` | Direct Bolt client from LAN |
 | MinIO S3 API | `9000` | Direct S3-compatible client from LAN |
 | MinIO Console | `9001` | Direct HTTP from LAN |
+| ElasticMQ SQS API | `9324` | Direct SQS-compatible HTTP API from LAN |
+| ElasticMQ UI | `9325` | Direct HTTP from LAN |
 
 ## Expected Docker port bindings
 
@@ -238,6 +243,8 @@ db-redis          0.0.0.0:6379->6379/tcp
 db-redisinsight   0.0.0.0:5540->5540/tcp
 db-neo4j          0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
 db-minio          0.0.0.0:9000-9001->9000-9001/tcp
+db-elasticmq      0.0.0.0:9324->9324/tcp
+db-elasticmq-ui   0.0.0.0:9325->3000/tcp
 ```
 
 Expected dashboard mapping:
@@ -306,6 +313,7 @@ http://dbs.home.arpa:5050
 http://dbs.home.arpa:5540
 http://dbs.home.arpa:7474
 http://dbs.home.arpa:9001
+http://dbs.home.arpa:9325
 ```
 
 ## Default endpoints
@@ -322,6 +330,8 @@ http://dbs.home.arpa:9001
 | Neo4j Bolt | `bolt://dbs.home.arpa:7687` |
 | MinIO S3 API | `http://dbs.home.arpa:9000` |
 | MinIO Console | `http://dbs.home.arpa:9001` |
+| ElasticMQ SQS API | `http://dbs.home.arpa:9324` |
+| ElasticMQ UI | `http://dbs.home.arpa:9325` |
 
 If DNS is not configured yet, use the server IP:
 
@@ -345,6 +355,7 @@ http://192.168.1.126:5050
 | RedisInsight | no app login by default | Redis connection is preconfigured |
 | Neo4j | `neo4j` | `change_me_neo4j_2026` |
 | MinIO | `minioadmin` | `change_me_minio_2026` |
+| ElasticMQ / UI | no authentication | no password |
 
 Change passwords in the runtime environment before serious use.
 
@@ -395,6 +406,8 @@ DB/admin services are intended to be reachable directly from the LAN:
 | Neo4j Bolt | `bolt://dbs.home.arpa:7687` |
 | MinIO S3 API | `http://dbs.home.arpa:9000` |
 | MinIO Console | `http://dbs.home.arpa:9001` |
+| ElasticMQ SQS API | `http://dbs.home.arpa:9324` |
+| ElasticMQ UI | `http://dbs.home.arpa:9325` |
 
 Do not port-forward these DB/admin ports from your router to the internet.
 
@@ -422,6 +435,9 @@ sudo ufw allow from 192.168.1.0/24 to any port 7687 proto tcp comment 'db.local 
 
 sudo ufw allow from 192.168.1.0/24 to any port 9000 proto tcp comment 'db.local MinIO S3 API - LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 9001 proto tcp comment 'db.local MinIO Console - LAN only'
+
+sudo ufw allow from 192.168.1.0/24 to any port 9324 proto tcp comment 'db.local ElasticMQ SQS API - LAN only'
+sudo ufw allow from 192.168.1.0/24 to any port 9325 proto tcp comment 'db.local ElasticMQ UI - LAN only'
 ```
 
 For Caddy, choose one policy.
@@ -459,7 +475,7 @@ For normal home/LAN use, the UFW rules above may be enough. For stricter firewal
 The DB/admin ports that need firewall control are:
 
 ```text
-5050, 5432, 5540, 6379, 7474, 7687, 9000, 9001
+5050, 5432, 5540, 6379, 7474, 7687, 9000, 9001, 9324, 9325
 ```
 
 The dashboard port `8003` should not be exposed directly because it is bound to `127.0.0.1`.
@@ -505,6 +521,8 @@ Test-NetConnection dbs.home.arpa -Port 7474
 Test-NetConnection dbs.home.arpa -Port 7687
 Test-NetConnection dbs.home.arpa -Port 9000
 Test-NetConnection dbs.home.arpa -Port 9001
+Test-NetConnection dbs.home.arpa -Port 9324
+Test-NetConnection dbs.home.arpa -Port 9325
 ```
 
 Expected:
@@ -535,6 +553,10 @@ S3_ENDPOINT_URL=http://127.0.0.1:9000
 S3_ACCESS_KEY=minioadmin
 S3_SECRET_KEY=change_me_minio_2026
 S3_BUCKET=langgraph-app
+SQS_ENDPOINT_URL=http://127.0.0.1:9324
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=test
+AWS_SECRET_ACCESS_KEY=test
 ```
 
 LAN:
@@ -549,6 +571,10 @@ S3_ENDPOINT_URL=http://dbs.home.arpa:9000
 S3_ACCESS_KEY=minioadmin
 S3_SECRET_KEY=change_me_minio_2026
 S3_BUCKET=langgraph-app
+SQS_ENDPOINT_URL=http://127.0.0.1:9324
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=test
+AWS_SECRET_ACCESS_KEY=test
 ```
 
 ## Important password/volume note
@@ -596,3 +622,22 @@ Never call this from GitHub Actions.
 ## Hardware note
 
 This stack is appropriate for a Core i5-6400T, 16 GB RAM, and SSD for lightweight home-server use. Neo4j is the largest idle memory user in this stack; its heap/page-cache defaults are intentionally modest in `.env.example`.
+
+
+## ElasticMQ / Amazon SQS development model
+
+ElasticMQ provides the local SQS-compatible endpoint:
+
+```text
+http://dbs.home.arpa:9324
+```
+
+The official ElasticMQ UI is available at:
+
+```text
+http://dbs.home.arpa:9325
+```
+
+Containers on the shared `db-local-net` network should use `http://elasticmq:9324` instead of routing through the host. The local stack persists ElasticMQ message storage in the `db-elasticmq-data` Docker volume.
+
+For local AWS SDK clients, use dummy credentials such as `test` and set the SQS endpoint override to ElasticMQ. In AWS production, remove the endpoint override so the SDK uses Amazon SQS normally.
