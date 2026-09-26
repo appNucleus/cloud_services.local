@@ -30,10 +30,11 @@ SMOKE_READY_TIMEOUT="${SMOKE_READY_TIMEOUT:-90}"
 
 retry_http() {
   local name="$1" url="$2"
+  shift 2
   local deadline=$((SECONDS + SMOKE_READY_TIMEOUT))
 
   while (( SECONDS < deadline )); do
-    if curl -fsS --connect-timeout 2 --max-time 5 "$url" >/dev/null 2>&1; then
+    if curl -fsS --connect-timeout 2 --max-time 5 "$@" "$url" >/dev/null 2>&1; then
       echo "$name: ok"
       return 0
     fi
@@ -72,7 +73,7 @@ compose ps
 # Exactly one Compose container must exist for each long-running service.
 # Fixed container_name values already prevent same-name duplicates; this also
 # catches accidental scaling/project drift before endpoint tests run.
-for service in postgres pgadmin redis redisinsight neo4j minio elasticmq elasticmq-ui dashboard; do
+for service in postgres pgadmin redis redisinsight neo4j minio elasticmq elasticmq-ui ui-gateway dashboard; do
   mapfile -t service_ids < <(compose ps -q "$service" | sed '/^[[:space:]]*$/d')
   if (( ${#service_ids[@]} != 1 )); then
     echo "Expected exactly one container for service '$service'; found ${#service_ids[@]}." >&2
@@ -89,7 +90,7 @@ printf '\n===== Dashboard =====\n'
 retry_http "dashboard" "http://${DASHBOARD_HOST_BIND}:${DASHBOARD_PORT}/index.html"
 
 printf '\n===== pgAdmin =====\n'
-retry_http "pgAdmin" "http://127.0.0.1:${PGADMIN_PORT}/misc/ping"
+retry_http "pgAdmin HTTPS gateway" "https://dbs.home.arpa:${PGADMIN_PORT}/misc/ping" --insecure --resolve "dbs.home.arpa:${PGADMIN_PORT}:127.0.0.1"
 
 printf '\n===== PostgreSQL =====\n'
 docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
@@ -99,11 +100,11 @@ printf '\n===== Redis =====\n'
 docker exec "$REDIS_CONTAINER_NAME" redis-cli -a "$REDIS_PASSWORD" ping
 
 printf '\n===== RedisInsight =====\n'
-retry_http "RedisInsight" "http://127.0.0.1:${REDISINSIGHT_PORT}/"
+retry_http "RedisInsight HTTPS gateway" "https://dbs.home.arpa:${REDISINSIGHT_PORT}/" --insecure --resolve "dbs.home.arpa:${REDISINSIGHT_PORT}:127.0.0.1"
 
 printf '\n===== Neo4j =====\n'
 docker exec "$NEO4J_CONTAINER_NAME" cypher-shell -u "$NEO4J_USERNAME" -p "$NEO4J_PASSWORD" "RETURN 1 AS ok;"
-retry_http "Neo4j Browser HTTP" "http://127.0.0.1:${NEO4J_HTTP_PORT}/"
+retry_http "Neo4j Browser HTTPS gateway" "https://dbs.home.arpa:${NEO4J_HTTP_PORT}/" --insecure --resolve "dbs.home.arpa:${NEO4J_HTTP_PORT}:127.0.0.1"
 
 printf '\n===== MinIO =====\n'
 docker exec "$MINIO_CONTAINER_NAME" mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null
@@ -112,12 +113,12 @@ if ! docker exec "$MINIO_CONTAINER_NAME" mc stat "local/$MINIO_DEFAULT_BUCKET" >
   exit 1
 fi
 echo "MinIO bucket $MINIO_DEFAULT_BUCKET: ok"
-retry_http "MinIO console" "http://127.0.0.1:${MINIO_CONSOLE_PORT}/"
+retry_http "MinIO console HTTPS gateway" "https://dbs.home.arpa:${MINIO_CONSOLE_PORT}/" --insecure --resolve "dbs.home.arpa:${MINIO_CONSOLE_PORT}:127.0.0.1"
 
 printf '\n===== ElasticMQ =====\n'
 retry_elasticmq
 
 printf '\n===== ElasticMQ UI =====\n'
-retry_http "elasticmq UI" "http://127.0.0.1:${ELASTICMQ_UI_PORT}/"
+retry_http "ElasticMQ UI HTTPS gateway" "https://dbs.home.arpa:${ELASTICMQ_UI_PORT}/" --insecure --resolve "dbs.home.arpa:${ELASTICMQ_UI_PORT}:127.0.0.1"
 
 printf '\nAll checks completed.\n'

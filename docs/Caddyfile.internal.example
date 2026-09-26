@@ -1,33 +1,18 @@
-# Merge these site blocks into the host /etc/caddy/Caddyfile.
-# tls internal uses Caddy's private CA. Clients that do not trust that CA will
-# show a certificate warning, which is intentional for this LAN-only setup.
+# Host Caddy only needs to proxy the dashboard on the default HTTPS port.
+# The five admin consoles are served by the Compose ui-gateway on their
+# documented HTTPS ports, all under the single dbs.home.arpa hostname.
+#
+# Dashboard:    https://dbs.home.arpa
+# pgAdmin:      https://dbs.home.arpa:5050
+# RedisInsight: https://dbs.home.arpa:5540
+# Neo4j:        https://dbs.home.arpa:7474
+# MinIO:        https://dbs.home.arpa:9001
+# ElasticMQ UI: https://dbs.home.arpa:9325
+#
+# Port 9324 remains the raw SQS-compatible ElasticMQ API and is intentionally
+# not used by the browser UI.
 
 dbs.home.arpa {
     tls internal
     reverse_proxy 127.0.0.1:8003
-}
-
-pgadmin.dbs.home.arpa {
-    tls internal
-    reverse_proxy 127.0.0.1:5050
-}
-
-redis.dbs.home.arpa {
-    tls internal
-    reverse_proxy 127.0.0.1:5540
-}
-
-neo4j.dbs.home.arpa {
-    tls internal
-    reverse_proxy 127.0.0.1:7474
-}
-
-minio.dbs.home.arpa {
-    tls internal
-    reverse_proxy 127.0.0.1:9001
-}
-
-sqs.dbs.home.arpa {
-    tls internal
-    reverse_proxy 127.0.0.1:9325
 }

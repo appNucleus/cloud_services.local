@@ -168,7 +168,7 @@ jobs:
           docker compose \
             --env-file "$DEPLOY_ENV_FILE" \
             pull --policy missing \
-            postgres pgadmin redis redisinsight neo4j elasticmq elasticmq-ui dashboard
+            postgres pgadmin redis redisinsight neo4j elasticmq elasticmq-ui ui-gateway dashboard
 
           echo "Candidate image preflight passed."
 

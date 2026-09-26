@@ -56,8 +56,6 @@ services:
       PGADMIN_LISTEN_PORT: "8080"
       PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
       PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
-    ports:
-      - "${ADMIN_UI_HOST_BIND:-127.0.0.1}:${PGADMIN_PORT:-5050}:8080"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
       - ${PGADMIN_SERVERS_JSON:-./generated/pgadmin/servers.json}:/pgadmin4/servers.json:ro
@@ -125,8 +123,6 @@ services:
       RI_REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me_redis_2026}
       RI_REDIS_TLS: "false"
       RI_REDIS_DB: 0
-    ports:
-      - "${ADMIN_UI_HOST_BIND:-127.0.0.1}:${REDISINSIGHT_PORT:-5540}:5540"
     volumes:
       - redisinsight_data:/data
     depends_on:
@@ -155,7 +151,6 @@ services:
       NEO4J_server_memory_heap_max__size: ${NEO4J_HEAP_MAX:-1G}
       NEO4J_server_memory_pagecache_size: ${NEO4J_PAGECACHE:-512m}
     ports:
-      - "${ADMIN_UI_HOST_BIND:-127.0.0.1}:${NEO4J_HTTP_PORT:-7474}:7474"
       - "${DB_HOST_BIND:-0.0.0.0}:${NEO4J_BOLT_PORT:-7687}:7687"
     volumes:
       - neo4j_data:/data
@@ -197,7 +192,6 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-change_me_minio_2026}
     ports:
       - "${DB_HOST_BIND:-0.0.0.0}:${MINIO_API_PORT:-9000}:9000"
-      - "${ADMIN_UI_HOST_BIND:-127.0.0.1}:${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -246,10 +240,43 @@ services:
     restart: unless-stopped
     environment:
       SQS_ENDPOINT: http://elasticmq:9324
-    ports:
-      - "${ADMIN_UI_HOST_BIND:-127.0.0.1}:${ELASTICMQ_UI_PORT:-9325}:3000"
     depends_on:
       - elasticmq
+    networks:
+      - db_net
+
+
+  ui-gateway:
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
+    mem_limit: ${UI_GATEWAY_MEMORY_LIMIT:-128m}
+    cpus: ${UI_GATEWAY_CPU_LIMIT:-0.5}
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+    image: caddy:2.11.4-alpine
+    container_name: ${UI_GATEWAY_CONTAINER_NAME:-db-ui-gateway}
+    restart: unless-stopped
+    ports:
+      - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${PGADMIN_PORT:-5050}:5050"
+      - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${REDISINSIGHT_PORT:-5540}:5540"
+      - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${NEO4J_HTTP_PORT:-7474}:7474"
+      - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${MINIO_CONSOLE_PORT:-9001}:9001"
+      - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${ELASTICMQ_UI_PORT:-9325}:9325"
+    volumes:
+      - ./config/Caddyfile.ui:/etc/caddy/Caddyfile:ro
+      - ui_gateway_data:/data
+      - ui_gateway_config:/config
+    depends_on:
+      - pgadmin
+      - redisinsight
+      - neo4j
+      - minio
+      - elasticmq-ui
     networks:
       - db_net
 
@@ -347,3 +374,7 @@ volumes:
     name: ${MINIO_VOLUME_NAME:-db-minio-data}
   elasticmq_data:
     name: ${ELASTICMQ_VOLUME_NAME:-db-elasticmq-data}
+  ui_gateway_data:
+    name: ${UI_GATEWAY_DATA_VOLUME_NAME:-db-ui-gateway-data}
+  ui_gateway_config:
+    name: ${UI_GATEWAY_CONFIG_VOLUME_NAME:-db-ui-gateway-config}

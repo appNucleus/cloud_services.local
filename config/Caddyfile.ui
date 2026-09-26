@@ -1,0 +1,28 @@
+{
+    auto_https disable_redirects
+}
+
+https://dbs.home.arpa:5050 {
+    tls internal
+    reverse_proxy pgadmin:8080
+}
+
+https://dbs.home.arpa:5540 {
+    tls internal
+    reverse_proxy redisinsight:5540
+}
+
+https://dbs.home.arpa:7474 {
+    tls internal
+    reverse_proxy neo4j:7474
+}
+
+https://dbs.home.arpa:9001 {
+    tls internal
+    reverse_proxy minio:9001
+}
+
+https://dbs.home.arpa:9325 {
+    tls internal
+    reverse_proxy elasticmq-ui:3000
+}
