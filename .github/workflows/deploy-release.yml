@@ -162,7 +162,9 @@ jobs:
             build_dir="$(mktemp -d)"
             trap 'rm -rf "$build_dir"' EXIT
             git clone --depth 1 --branch "$minio_release" https://github.com/minio/minio.git "$build_dir/minio"
-            make -C "$build_dir/minio" docker TAG="$minio_image"
+            docker run --rm -v "$build_dir/minio:/src" -w /src golang:1.24.13-bookworm make build
+            sed -i 's|FROM minio/minio:latest|FROM quay.io/minio/minio:latest|' "$build_dir/minio/Dockerfile"
+            docker build --no-cache -t "$minio_image" "$build_dir/minio"
           fi
           echo "Pinned MinIO server image available: $minio_image"
 
