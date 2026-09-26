@@ -51,10 +51,13 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-change_me_pgadmin_2026}
       PGADMIN_CONFIG_SERVER_MODE: "True"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      # no-new-privileges prevents binding privileged port 80 in pgAdmin 9.x.
+      # Make the unprivileged listener explicit and map the host UI port to it.
+      PGADMIN_LISTEN_PORT: "8080"
       PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
       PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
     ports:
-      - "${ADMIN_UI_HOST_BIND:-127.0.0.1}:${PGADMIN_PORT:-5050}:80"
+      - "${ADMIN_UI_HOST_BIND:-127.0.0.1}:${PGADMIN_PORT:-5050}:8080"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
       - ${PGADMIN_SERVERS_JSON:-./generated/pgadmin/servers.json}:/pgadmin4/servers.json:ro
