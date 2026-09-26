@@ -31,3 +31,9 @@ Basic command:
 ```bash
 docker stats
 ```
+
+## Default hard limits
+
+The Compose defaults cap the stack for a 16 GiB development host: PostgreSQL 2 GiB, pgAdmin 768 MiB, Redis 1 GiB, RedisInsight 768 MiB, Neo4j 2.5 GiB, MinIO 1.5 GiB, ElasticMQ 768 MiB, ElasticMQ UI 512 MiB, dashboard 64 MiB, and the one-shot MinIO initializer 256 MiB. These are ceilings, not reservations, so normal idle use is much lower. CPU limits are similarly conservative and configurable in `runtime.env`.
+
+Redis application data is separately capped at 512 MiB with `allkeys-lru`, matching its intended cache/ephemeral-state role. The host deployment requires 5 GiB free disk and warns below 10 GiB. Docker logs rotate at 10 MiB x 3 files per container. Persistent database volumes are deliberately not given artificial filesystem quotas because a hard full-volume condition can corrupt or abruptly stop a database; capacity is controlled through host free-space gates, log caps, and count-based backup retention instead.

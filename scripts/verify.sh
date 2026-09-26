@@ -12,6 +12,10 @@ NEO4J_CONTAINER_NAME="${NEO4J_CONTAINER_NAME:-db-neo4j}"
 MINIO_CONTAINER_NAME="${MINIO_CONTAINER_NAME:-db-minio}"
 ELASTICMQ_PORT="${ELASTICMQ_PORT:-9324}"
 ELASTICMQ_UI_PORT="${ELASTICMQ_UI_PORT:-9325}"
+PGADMIN_PORT="${PGADMIN_PORT:-5050}"
+REDISINSIGHT_PORT="${REDISINSIGHT_PORT:-5540}"
+NEO4J_HTTP_PORT="${NEO4J_HTTP_PORT:-7474}"
+MINIO_CONSOLE_PORT="${MINIO_CONSOLE_PORT:-9001}"
 DB_HOST_BIND="${DB_HOST_BIND:-0.0.0.0}"
 POSTGRES_USER="${POSTGRES_USER:-langgraph_user}"
 POSTGRES_DB="${POSTGRES_DB:-langgraph_app}"
@@ -32,6 +36,9 @@ compose ps
 printf '\n===== Dashboard =====\n'
 curl -fsS "http://${DASHBOARD_HOST_BIND}:${DASHBOARD_PORT}/" >/dev/null && echo "dashboard: ok"
 
+printf '\n===== pgAdmin =====\n'
+curl -fsS "http://127.0.0.1:${PGADMIN_PORT}/misc/ping" >/dev/null && echo "pgAdmin: ok"
+
 printf '\n===== PostgreSQL =====\n'
 docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
 docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "CREATE EXTENSION IF NOT EXISTS vector; SELECT extname FROM pg_extension WHERE extname='vector';"
@@ -39,12 +46,21 @@ docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB
 printf '\n===== Redis =====\n'
 docker exec "$REDIS_CONTAINER_NAME" redis-cli -a "$REDIS_PASSWORD" ping
 
+printf '\n===== RedisInsight =====\n'
+curl -fsS "http://127.0.0.1:${REDISINSIGHT_PORT}/api/health/" >/dev/null && echo "RedisInsight: ok"
+
 printf '\n===== Neo4j =====\n'
 docker exec "$NEO4J_CONTAINER_NAME" cypher-shell -u "$NEO4J_USERNAME" -p "$NEO4J_PASSWORD" "RETURN 1 AS ok;"
+curl -fsS "http://127.0.0.1:${NEO4J_HTTP_PORT}/" >/dev/null && echo "Neo4j Browser HTTP: ok"
 
 printf '\n===== MinIO =====\n'
 docker exec "$MINIO_CONTAINER_NAME" mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null
-docker exec "$MINIO_CONTAINER_NAME" mc ls "local/$MINIO_DEFAULT_BUCKET" >/dev/null || docker exec "$MINIO_CONTAINER_NAME" mc ls local
+if ! docker exec "$MINIO_CONTAINER_NAME" mc stat "local/$MINIO_DEFAULT_BUCKET" >/dev/null 2>&1; then
+  echo "Required MinIO bucket is missing: $MINIO_DEFAULT_BUCKET" >&2
+  exit 1
+fi
+echo "MinIO bucket $MINIO_DEFAULT_BUCKET: ok"
+curl -fsS "http://127.0.0.1:${MINIO_CONSOLE_PORT}/" >/dev/null && echo "MinIO console: ok"
 
 printf '\n===== ElasticMQ =====\n'
 elasticmq_response="$(curl -fsS -X POST \
