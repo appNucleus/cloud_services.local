@@ -99,14 +99,14 @@ docker ps --format "table {{.Names}}\t{{.Ports}}" | grep db-
 Expected DB/admin services:
 
 ```text
-db-pgadmin        443/tcp, 0.0.0.0:5050->80/tcp
+db-pgadmin        443/tcp, 127.0.0.1:5050->80/tcp
 db-postgres       0.0.0.0:5432->5432/tcp
 db-redis          0.0.0.0:6379->6379/tcp
-db-redisinsight   0.0.0.0:5540->5540/tcp
-db-neo4j          0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
-db-minio          0.0.0.0:9000-9001->9000-9001/tcp
+db-redisinsight   127.0.0.1:5540->5540/tcp
+db-neo4j          127.0.0.1:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
+db-minio          0.0.0.0:9000->9000/tcp, 127.0.0.1:9001->9001/tcp
 db-elasticmq      0.0.0.0:9324->9324/tcp
-db-elasticmq-ui   0.0.0.0:9325->3000/tcp
+db-elasticmq-ui   127.0.0.1:9325->3000/tcp
 ```
 
 Expected dashboard:
@@ -351,3 +351,8 @@ It should resolve to:
 ```text
 192.168.1.126
 ```
+
+
+## Hardened admin UI policy
+
+Set `ADMIN_UI_HOST_BIND=127.0.0.1`. Ports 5050, 5540, 7474, 9001 and 9325 are host-local only and Caddy publishes them via the HTTPS subdomains above. Do not add LAN firewall allows for these localhost-only UI ports. Raw application ports 5432, 6379, 7687, 9000 and 9324 remain LAN-accessible subject to firewall policy.
