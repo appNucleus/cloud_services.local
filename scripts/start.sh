@@ -134,12 +134,12 @@ if ! compose "${up_args[@]}" "${core_services[@]}"; then
   exit 1
 fi
 
-# compose --wait already waits for every service with a Docker healthcheck.
-# Do not add a blind sleep before smoke tests: healthy services are ready now,
-# while services without healthchecks are exercised by verify.sh immediately
-# after this script completes.
+# compose --wait handles services with reliable in-container healthchecks.
+# Browser/admin services and ElasticMQ are intentionally verified from the host
+# by verify.sh, which retries their real endpoints instead of relying on tools
+# that may not exist inside third-party images. No arbitrary sleep is needed.
 if [[ "$wait_for_health" == "true" ]]; then
-  echo "Compose readiness checks passed; continuing without an arbitrary startup sleep."
+  echo "Compose health checks passed; host-level smoke tests will retry remaining endpoints until ready."
 fi
 
 if [[ "${RUN_MINIO_INIT:-true}" == "true" ]]; then

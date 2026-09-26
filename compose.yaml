@@ -61,12 +61,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/misc/ping || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
     networks:
       - db_net
 
@@ -135,12 +129,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5540/api/health/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
     networks:
       - db_net
 
@@ -196,7 +184,7 @@ services:
       options:
         max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
         max-file: "${DOCKER_LOG_MAX_FILE:-3}"
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: minio/minio:latest
     container_name: ${MINIO_CONTAINER_NAME:-db-minio}
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -235,12 +223,6 @@ services:
     volumes:
       - elasticmq_data:/data
       - ${ELASTICMQ_CONFIG_FILE:-./config/elasticmq.conf}:/opt/elasticmq.conf:ro
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - 'http://127.0.0.1:9324/?Action=ListQueues&Version=2012-11-05' | grep -q ListQueuesResponse"]
-      interval: 10s
-      timeout: 5s
-      retries: 15
-      start_period: 20s
     networks:
       - db_net
 
@@ -263,14 +245,7 @@ services:
     ports:
       - "${ADMIN_UI_HOST_BIND:-127.0.0.1}:${ELASTICMQ_UI_PORT:-9325}:3000"
     depends_on:
-      elasticmq:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
+      - elasticmq
     networks:
       - db_net
 
@@ -315,7 +290,7 @@ services:
       options:
         max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
         max-file: "${DOCKER_LOG_MAX_FILE:-3}"
-    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    image: minio/mc:RELEASE.2025-07-16T15-35-03Z
     container_name: ${MINIO_INIT_CONTAINER_NAME:-db-minio-init}
     restart: "no"
     environment:
