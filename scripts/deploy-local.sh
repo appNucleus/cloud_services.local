@@ -42,6 +42,7 @@ for script in scripts/*.sh; do
 done
 
 bash ./scripts/verify-server.sh
+bash ./scripts/validate-runtime-env.sh
 bash ./scripts/generate-pgadmin-config.sh
 
 docker compose --env-file "$DEPLOY_ENV_FILE" config >/dev/null
