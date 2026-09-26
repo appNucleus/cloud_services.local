@@ -322,8 +322,7 @@ services:
       options:
         max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
         max-file: "${DOCKER_LOG_MAX_FILE:-3}"
-    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
-    pull_policy: never
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
     container_name: ${MINIO_INIT_CONTAINER_NAME:-db-minio-init}
     restart: "no"
     environment:
