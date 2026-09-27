@@ -78,7 +78,7 @@ With all logical services enabled:
 | MinIO Console | `https://aws.home.arpa:9001` |
 | ElasticMQ SQS API | `http://aws.home.arpa:9324` |
 | ElasticMQ UI | `https://aws.home.arpa:9325` |
-| Cognito Local User Pools API | `http://aws.home.arpa:9229` |
+| Cognito Local User Pools API | `https://aws.home.arpa:9229` |
 
 Containers on `db-local-net` should use Compose service names (`postgres`, `redis`, `neo4j`, `minio`, `elasticmq`, `cognito`) rather than hairpinning through the host.
 
@@ -112,7 +112,7 @@ The stack uses the pinned image:
 jagregory/cognito-local:5.3.0
 ```
 
-Cognito Local is a development emulator for **Amazon Cognito User Pools**, not a complete Cognito/Identity Pools implementation.
+Cognito Local is a development emulator for **Amazon Cognito User Pools**, not a complete Cognito/Identity Pools implementation. The Compose UI gateway provides a small browser landing/User Pools page at `https://aws.home.arpa:9229/` and proxies Cognito API requests on the same HTTPS origin.
 
 Persistent state is stored in:
 
@@ -123,7 +123,7 @@ db-cognito-data
 Deployment generates Cognito Local configuration and synchronizes it into the preserved external named volume before startup; Cognito can then update its own writable config while user-pool data remains persistent. The configured token issuer is:
 
 ```text
-http://aws.home.arpa:9229
+https://aws.home.arpa:9229
 ```
 
 The smoke test calls the User Pools `ListUserPools` API rather than relying only on an open TCP port.
@@ -242,7 +242,7 @@ REDIS_URL=redis://:change_me_redis_2026@127.0.0.1:6379/0
 NEO4J_URI=bolt://127.0.0.1:7687
 S3_ENDPOINT_URL=http://127.0.0.1:9000
 SQS_ENDPOINT_URL=http://127.0.0.1:9324
-COGNITO_ENDPOINT_URL=http://127.0.0.1:9229
+COGNITO_ENDPOINT_URL=https://aws.home.arpa:9229
 ```
 
 LAN:
@@ -253,7 +253,7 @@ REDIS_URL=redis://:change_me_redis_2026@aws.home.arpa:6379/0
 NEO4J_URI=bolt://aws.home.arpa:7687
 S3_ENDPOINT_URL=http://aws.home.arpa:9000
 SQS_ENDPOINT_URL=http://aws.home.arpa:9324
-COGNITO_ENDPOINT_URL=http://aws.home.arpa:9229
+COGNITO_ENDPOINT_URL=https://aws.home.arpa:9229
 ```
 
 ## Security and resource model
