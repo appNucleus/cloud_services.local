@@ -16,7 +16,7 @@ Canonical hostname: `aws.home.arpa`.
 - Neo4j Browser: `https://aws.home.arpa:7474`
 - MinIO Console: `https://aws.home.arpa:9001`
 - ElasticMQ UI: `https://aws.home.arpa:9325`
-- Cognito Local API: `http://aws.home.arpa:9229`
+- Cognito Local API: `https://aws.home.arpa:9229`
 
 Host Caddy publishes the dashboard from `127.0.0.1:8003`. The Compose UI gateway provides the service-specific HTTPS ports.
 
