@@ -265,7 +265,6 @@ services:
       - "${DB_HOST_BIND:-0.0.0.0}:${COGNITO_PORT:-9229}:9229"
     volumes:
       - cognito_data:/app/.cognito
-      - ${COGNITO_CONFIG_FILE:-./generated/cognito/config.json}:/app/.cognito/config.json:ro
     healthcheck:
       test:
         - CMD-SHELL
