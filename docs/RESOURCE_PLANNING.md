@@ -11,8 +11,9 @@ With all six logical services enabled, expected long-running containers are:
 7. `db-elasticmq`
 8. `db-elasticmq-ui`
 9. `db-cognito`
-10. `db-ui-gateway`
-11. `db-dashboard`
+10. `db-cognito-ui`
+11. `db-ui-gateway`
+12. `db-dashboard`
 
 `db-minio-init` is temporary and removed after successful bucket initialization.
 
@@ -31,6 +32,7 @@ Disabled logical services remove their associated long-running containers, reduc
 | ElasticMQ | 768 MiB | 1.0 |
 | ElasticMQ UI | 512 MiB | 0.5 |
 | Cognito Local | 512 MiB | 0.5 |
+| Cognito Local UI | 256 MiB | 0.5 |
 | UI gateway | 128 MiB | 0.5 |
 | Dashboard | 64 MiB | 0.25 |
 | MinIO init (temporary) | 256 MiB | 0.5 |
