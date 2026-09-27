@@ -34,7 +34,8 @@ window.CLOUD_SERVICES_CONFIG = Object.freeze({
     minioConsole: ${MINIO_CONSOLE_PORT:-9001},
     elasticmqApi: ${ELASTICMQ_PORT:-9324},
     elasticmqUi: ${ELASTICMQ_UI_PORT:-9325},
-    cognito: ${COGNITO_PORT:-9229}
+    cognito: ${COGNITO_PORT:-9229},
+    cognitoUi: ${COGNITO_UI_PORT:-9230}
   })
 });
 EOF_JS
