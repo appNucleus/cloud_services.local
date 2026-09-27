@@ -261,8 +261,8 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 9229
-    expose:
-      - "9229"
+    ports:
+      - "${DB_HOST_BIND:-0.0.0.0}:${COGNITO_PORT:-9229}:9229"
     volumes:
       - cognito_data:/app/.cognito
     healthcheck:
@@ -299,7 +299,7 @@ services:
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${NEO4J_HTTP_PORT:-7474}:7474"
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${MINIO_CONSOLE_PORT:-9001}:9001"
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${ELASTICMQ_UI_PORT:-9325}:9325"
-      - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${COGNITO_PORT:-9229}:9229"
+      - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${COGNITO_UI_PORT:-9230}:9230"
     volumes:
       - ./config/Caddyfile.ui:/etc/caddy/Caddyfile:ro
       - ./www/cognito:/srv/cognito:ro
