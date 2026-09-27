@@ -12,7 +12,7 @@
 | 8 | MinIO Console | `https://aws.home.arpa:9001` | `minioadmin` | `change_me_minio_2026` |
 | 9 | ElasticMQ SQS API | `http://aws.home.arpa:9324` | No authentication | No password |
 | 10 | ElasticMQ UI | `https://aws.home.arpa:9325` | No app login | No app password |
-| 11 | Cognito Local User Pools API | `http://aws.home.arpa:9229` | Managed in user pools | Managed in user pools |
+| 11 | Cognito Local UI + User Pools API | `https://aws.home.arpa:9229` | Managed in user pools | Managed in user pools |
 
 Dashboard: `https://aws.home.arpa`
 
