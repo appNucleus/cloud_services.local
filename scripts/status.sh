@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-
-# shellcheck source=common.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 load_runtime_env
+configure_service_selection
 cd "$repo_root"
-compose ps
+echo "Platform: ${PLATFORM_HOSTNAME:-aws.home.arpa}"
+echo "Enabled profiles: ${COMPOSE_PROFILES:-<none>}"
+compose_all_profiles ps -a

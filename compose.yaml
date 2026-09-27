@@ -2,6 +2,7 @@ name: ${COMPOSE_PROJECT_NAME:-db-local-stack}
 
 services:
   postgres:
+    profiles: [postgres]
     security_opt:
       - no-new-privileges:true
     pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
@@ -29,10 +30,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks:
-      - db_net
+    networks: [db_net]
 
   pgadmin:
+    profiles: [postgres]
     security_opt:
       - no-new-privileges:true
     pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
@@ -51,8 +52,6 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-change_me_pgadmin_2026}
       PGADMIN_CONFIG_SERVER_MODE: "True"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
-      # no-new-privileges prevents binding privileged port 80 in pgAdmin 9.x.
-      # Make the unprivileged listener explicit and map the host UI port to it.
       PGADMIN_LISTEN_PORT: "8080"
       PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
       PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
@@ -62,10 +61,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      - db_net
+    networks: [db_net]
 
   redis:
+    profiles: [redis]
     security_opt:
       - no-new-privileges:true
     pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
@@ -94,10 +93,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks:
-      - db_net
+    networks: [db_net]
 
   redisinsight:
+    profiles: [redis]
     security_opt:
       - no-new-privileges:true
     pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
@@ -128,10 +127,10 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    networks:
-      - db_net
+    networks: [db_net]
 
   neo4j:
+    profiles: [neo4j]
     security_opt:
       - no-new-privileges:true
     pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
@@ -168,10 +167,10 @@ services:
       timeout: ${NEO4J_HEALTHCHECK_TIMEOUT:-10s}
       retries: ${NEO4J_HEALTHCHECK_RETRIES:-40}
       start_period: ${NEO4J_HEALTHCHECK_START_PERIOD:-120s}
-    networks:
-      - db_net
+    networks: [db_net]
 
   minio:
+    profiles: [minio]
     security_opt:
       - no-new-privileges:true
     pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
@@ -199,10 +198,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks:
-      - db_net
+    networks: [db_net]
 
   elasticmq:
+    profiles: [elasticmq]
     security_opt:
       - no-new-privileges:true
     pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
@@ -221,10 +220,10 @@ services:
     volumes:
       - elasticmq_data:/data
       - ${ELASTICMQ_CONFIG_FILE:-./config/elasticmq.conf}:/opt/elasticmq.conf:ro
-    networks:
-      - db_net
+    networks: [db_net]
 
   elasticmq-ui:
+    profiles: [elasticmq]
     security_opt:
       - no-new-privileges:true
     pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
@@ -242,9 +241,40 @@ services:
       SQS_ENDPOINT: http://elasticmq:9324
     depends_on:
       - elasticmq
-    networks:
-      - db_net
+    networks: [db_net]
 
+  cognito:
+    profiles: [cognito]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
+    mem_limit: ${COGNITO_MEMORY_LIMIT:-512m}
+    cpus: ${COGNITO_CPU_LIMIT:-0.5}
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+    image: ${COGNITO_IMAGE:-jagregory/cognito-local:5.3.0}
+    container_name: ${COGNITO_CONTAINER_NAME:-db-cognito}
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 9229
+    ports:
+      - "${DB_HOST_BIND:-0.0.0.0}:${COGNITO_PORT:-9229}:9229"
+    volumes:
+      - cognito_data:/app/.cognito
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          node -e "fetch('http://127.0.0.1:9229/',{method:'POST',headers:{'Content-Type':'application/x-amz-json-1.1','X-Amz-Target':'AWSCognitoIdentityProviderService.ListUserPools'},body:'{\"MaxResults\":1}'}).then(async r=>{if(!r.ok)process.exit(1);const j=await r.json();if(!Array.isArray(j.UserPools))process.exit(1)}).catch(()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks: [db_net]
 
   ui-gateway:
     security_opt:
@@ -261,6 +291,8 @@ services:
     image: caddy:2.11.4-alpine
     container_name: ${UI_GATEWAY_CONTAINER_NAME:-db-ui-gateway}
     restart: unless-stopped
+    environment:
+      PLATFORM_HOSTNAME: ${PLATFORM_HOSTNAME:-aws.home.arpa}
     ports:
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${PGADMIN_PORT:-5050}:5050"
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${REDISINSIGHT_PORT:-5540}:5540"
@@ -271,14 +303,7 @@ services:
       - ./config/Caddyfile.ui:/etc/caddy/Caddyfile:ro
       - ui_gateway_data:/data
       - ui_gateway_config:/config
-    depends_on:
-      - pgadmin
-      - redisinsight
-      - neo4j
-      - minio
-      - elasticmq-ui
-    networks:
-      - db_net
+    networks: [db_net]
 
   dashboard:
     security_opt:
@@ -302,16 +327,16 @@ services:
     ports:
       - "${DASHBOARD_HOST_BIND:-127.0.0.1}:${DASHBOARD_PORT:-8003}:80"
     volumes:
-      - ${DASHBOARD_WWW_DIR:-./www}:/usr/share/nginx/html:ro
+      - ${DASHBOARD_GENERATED_DIR:-./generated/dashboard}:/usr/share/nginx/html:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/index.html || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/index.html && wget -q -O /dev/null http://127.0.0.1/runtime-config.js || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
-    networks:
-      - db_net
+    networks: [db_net]
 
   minio-init:
+    profiles: [minio]
     security_opt:
       - no-new-privileges:true
     pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
@@ -344,8 +369,7 @@ services:
     depends_on:
       minio:
         condition: service_healthy
-    networks:
-      - db_net
+    networks: [db_net]
 
 networks:
   db_net:
@@ -373,6 +397,8 @@ volumes:
     name: ${MINIO_VOLUME_NAME:-db-minio-data}
   elasticmq_data:
     name: ${ELASTICMQ_VOLUME_NAME:-db-elasticmq-data}
+  cognito_data:
+    name: ${COGNITO_VOLUME_NAME:-db-cognito-data}
   ui_gateway_data:
     name: ${UI_GATEWAY_DATA_VOLUME_NAME:-db-ui-gateway-data}
   ui_gateway_config:

@@ -1,39 +1,46 @@
 # Resource planning
 
-Expected long-running containers for this project:
+With all six logical services enabled, expected long-running containers are:
 
-1. db-postgres
-2. db-pgadmin
-3. db-redis
-4. db-redisinsight
-5. db-neo4j
-6. db-minio
-7. db-elasticmq
-8. db-elasticmq-ui
-9. db-dashboard
+1. `db-postgres`
+2. `db-pgadmin`
+3. `db-redis`
+4. `db-redisinsight`
+5. `db-neo4j`
+6. `db-minio`
+7. `db-elasticmq`
+8. `db-elasticmq-ui`
+9. `db-cognito`
+10. `db-ui-gateway`
+11. `db-dashboard`
 
-`db-minio-init` is temporary and exits after creating the default bucket.
+`db-minio-init` is temporary and removed after successful bucket initialization.
 
-With your two app containers (`mcp` and `langchain/langgraph app`), the host will normally run about 11 long-running containers.
+Disabled logical services remove their associated long-running containers, reducing resource use while preserving named volumes.
 
-For a Core i5-6400T, 16 GB RAM, and 500 GB SSD, this is acceptable for 2-3 users if workloads are light/moderate. The largest memory consumers are usually Neo4j, PostgreSQL under load, and any LLM/Ollama model processes. The static dashboard and ElasticMQ UI are lightweight; ElasticMQ adds a modest local queue-service footprint.
+## Default ceilings
 
-Recommended first-run memory approach:
+| Component | Memory | CPU |
+|---|---:|---:|
+| PostgreSQL | 2 GiB | 2.0 |
+| pgAdmin | 768 MiB | 1.0 |
+| Redis | 1 GiB | 1.0 |
+| RedisInsight | 768 MiB | 1.0 |
+| Neo4j | 2560 MiB | 2.0 |
+| MinIO | 1536 MiB | 1.5 |
+| ElasticMQ | 768 MiB | 1.0 |
+| ElasticMQ UI | 512 MiB | 0.5 |
+| Cognito Local | 512 MiB | 0.5 |
+| UI gateway | 128 MiB | 0.5 |
+| Dashboard | 64 MiB | 0.25 |
+| MinIO init (temporary) | 256 MiB | 0.5 |
 
-- Keep Neo4j heap max at 1 GB.
-- Keep Neo4j page cache at 512 MB.
-- Use Redis mainly as cache/queue, not as the only durable source of truth.
-- Store raw files in MinIO and metadata/chunks in PostgreSQL.
-- Monitor with `docker stats` during real usage.
+These values are ceilings, not reservations; normal idle usage is substantially lower.
 
-Basic command:
+For a 16 GiB development host, keep Neo4j heap/page-cache conservative, use Redis mainly for ephemeral/cache state, store large objects in MinIO, and monitor real usage with:
 
 ```bash
 docker stats
 ```
 
-## Default hard limits
-
-The Compose defaults cap the stack for a 16 GiB development host: PostgreSQL 2 GiB, pgAdmin 768 MiB, Redis 1 GiB, RedisInsight 768 MiB, Neo4j 2.5 GiB, MinIO 1.5 GiB, ElasticMQ 768 MiB, ElasticMQ UI 512 MiB, dashboard 64 MiB, and the one-shot MinIO initializer 256 MiB. These are ceilings, not reservations, so normal idle use is much lower. CPU limits are similarly conservative and configurable in `runtime.env`.
-
-Redis application data is separately capped at 512 MiB with `allkeys-lru`, matching its intended cache/ephemeral-state role. The host deployment requires 5 GiB free disk and warns below 10 GiB. Docker logs rotate at 10 MiB x 3 files per container. Persistent database volumes are deliberately not given artificial filesystem quotas because a hard full-volume condition can corrupt or abruptly stop a database; capacity is controlled through host free-space gates, log caps, and count-based backup retention instead.
+The deployment requires at least 5 GiB free disk and warns below 10 GiB. Docker JSON logs rotate by default at 10 MiB × 3 files per container. Persistent service volumes are intentionally not assigned small filesystem quotas because a full database volume can cause abrupt failures.
