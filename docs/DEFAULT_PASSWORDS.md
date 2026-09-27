@@ -13,6 +13,7 @@
 | 9 | ElasticMQ SQS API | `http://aws.home.arpa:9324` | No authentication | No password |
 | 10 | ElasticMQ UI | `https://aws.home.arpa:9325` | No app login | No app password |
 | 11 | Cognito Local User Pools API | `http://aws.home.arpa:9229` | Managed in user pools | Managed in user pools |
+| 12 | Cognito Local UI | `https://aws.home.arpa:9230` | No separate UI login | No separate UI password |
 
 Dashboard: `https://aws.home.arpa`
 

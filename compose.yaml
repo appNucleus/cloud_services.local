@@ -293,14 +293,17 @@ services:
     restart: unless-stopped
     environment:
       PLATFORM_HOSTNAME: ${PLATFORM_HOSTNAME:-aws.home.arpa}
+      COGNITO_UI_PORT: ${COGNITO_UI_PORT:-9230}
     ports:
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${PGADMIN_PORT:-5050}:5050"
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${REDISINSIGHT_PORT:-5540}:5540"
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${NEO4J_HTTP_PORT:-7474}:7474"
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${MINIO_CONSOLE_PORT:-9001}:9001"
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${ELASTICMQ_UI_PORT:-9325}:9325"
+      - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${COGNITO_UI_PORT:-9230}:${COGNITO_UI_PORT:-9230}"
     volumes:
       - ./config/Caddyfile.ui:/etc/caddy/Caddyfile:ro
+      - ./www/cognito:/srv/cognito:ro
       - ui_gateway_data:/data
       - ui_gateway_config:/config
     networks: [db_net]

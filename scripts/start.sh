@@ -98,6 +98,15 @@ if (( ${#disabled_containers[@]} > 0 )); then
   done
 fi
 
+# The UI gateway is deliberately recreated on every deployment. Its Caddyfile is
+# bind-mounted, and changing file contents alone does not make a running Caddy
+# process reload new routes.
+ui_gateway_container="${UI_GATEWAY_CONTAINER_NAME:-db-ui-gateway}"
+if docker container inspect "$ui_gateway_container" >/dev/null 2>&1; then
+  echo "Refreshing UI gateway so HTTPS routing changes take effect: $ui_gateway_container"
+  docker rm --force "$ui_gateway_container" >/dev/null
+fi
+
 # Cognito Local uses an intentionally external named volume so existing user-pool
 # data survives service toggles and migrations without Compose ownership warnings.
 # Cognito writes its config file at runtime, so seed the generated config into the

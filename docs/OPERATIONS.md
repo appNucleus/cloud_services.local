@@ -17,6 +17,7 @@ Canonical hostname: `aws.home.arpa`.
 - MinIO Console: `https://aws.home.arpa:9001`
 - ElasticMQ UI: `https://aws.home.arpa:9325`
 - Cognito Local API: `http://aws.home.arpa:9229`
+- Cognito Local UI: `https://aws.home.arpa:9230`
 
 Host Caddy publishes the dashboard from `127.0.0.1:8003`. The Compose UI gateway provides the service-specific HTTPS ports.
 
@@ -27,7 +28,7 @@ Host Caddy publishes the dashboard from `127.0.0.1:8003`. The Compose UI gateway
 - enabled service: exactly one running container plus protocol/API readiness
 - disabled service: application/admin containers must be absent
 - dashboard runtime metadata must match `runtime.env`
-- Cognito Local must answer `ListUserPools` and contain the expected token issuer
+- Cognito Local API must answer `ListUserPools`, the HTTPS UI must render independently on port `9230`, and the API issuer must remain `http://aws.home.arpa:9229`
 
 ## Storage safety and rollback
 

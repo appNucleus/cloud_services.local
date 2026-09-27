@@ -49,10 +49,11 @@ The Compose `db-ui-gateway` is separate from host Caddy. It serves these HTTPS e
 - Neo4j Browser — `https://aws.home.arpa:7474`
 - MinIO Console — `https://aws.home.arpa:9001`
 - ElasticMQ UI — `https://aws.home.arpa:9325`
+- Cognito Local UI — `https://aws.home.arpa:9230`
 
 The gateway stays running even when a logical backend is disabled. The dashboard makes disabled admin links non-clickable, and deployment verification does not expect a disabled backend to answer.
 
-Raw service protocols are not HTTP reverse-proxied through this gateway:
+Raw service endpoints are not reverse-proxied through this gateway:
 
 - PostgreSQL `5432`
 - Redis `6379`

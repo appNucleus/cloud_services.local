@@ -1,5 +1,5 @@
 # System-level Caddy route for the dashboard. The Compose ui-gateway serves the
-# five browser/admin consoles on their own HTTPS ports under the same hostname.
+# browser/admin consoles on their own HTTPS ports under the same hostname.
 #
 # Dashboard:    https://aws.home.arpa
 # pgAdmin:      https://aws.home.arpa:5050
@@ -7,9 +7,10 @@
 # Neo4j:        https://aws.home.arpa:7474
 # MinIO:        https://aws.home.arpa:9001
 # ElasticMQ UI: https://aws.home.arpa:9325
+# Cognito UI:    https://aws.home.arpa:9230
 #
 # Raw APIs remain direct LAN services: PostgreSQL 5432, Redis 6379, Neo4j Bolt
-# 7687, MinIO 9000, ElasticMQ 9324, and Cognito Local 9229.
+# 7687, MinIO 9000, ElasticMQ 9324, and Cognito Local API 9229. The Cognito UI is a separate HTTPS page on 9230.
 
 aws.home.arpa {
     tls internal

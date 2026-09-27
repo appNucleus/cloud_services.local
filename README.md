@@ -79,6 +79,7 @@ With all logical services enabled:
 | ElasticMQ SQS API | `http://aws.home.arpa:9324` |
 | ElasticMQ UI | `https://aws.home.arpa:9325` |
 | Cognito Local User Pools API | `http://aws.home.arpa:9229` |
+| Cognito Local UI | `https://aws.home.arpa:9230` |
 
 Containers on `db-local-net` should use Compose service names (`postgres`, `redis`, `neo4j`, `minio`, `elasticmq`, `cognito`) rather than hairpinning through the host.
 
@@ -102,7 +103,7 @@ aws.home.arpa {
 
 This host Caddy configuration is outside the repository and must be kept consistent with `PLATFORM_HOSTNAME`. LAN DNS must resolve `aws.home.arpa` to the server.
 
-The Compose `db-ui-gateway` independently publishes the browser/admin UIs with Caddy `tls internal` on ports `5050`, `5540`, `7474`, `9001`, and `9325` under the same `aws.home.arpa` hostname.
+The Compose `db-ui-gateway` independently publishes the browser/admin UIs with Caddy `tls internal` on ports `5050`, `5540`, `7474`, `9001`, `9325`, and `9230` under the same `aws.home.arpa` hostname.
 
 ## Cognito Local
 
@@ -112,7 +113,7 @@ The stack uses the pinned image:
 jagregory/cognito-local:5.3.0
 ```
 
-Cognito Local is a development emulator for **Amazon Cognito User Pools**, not a complete Cognito/Identity Pools implementation.
+Cognito Local is a development emulator for **Amazon Cognito User Pools**, not a complete Cognito/Identity Pools implementation. The API remains a direct local service at `http://aws.home.arpa:9229`. A separate lightweight browser UI is served over internal TLS at `https://aws.home.arpa:9230`; the UI does not proxy Cognito API traffic.
 
 Persistent state is stored in:
 

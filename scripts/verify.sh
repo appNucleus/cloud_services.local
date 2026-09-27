@@ -27,6 +27,7 @@ REDISINSIGHT_PORT="${REDISINSIGHT_PORT:-5540}"
 NEO4J_HTTP_PORT="${NEO4J_HTTP_PORT:-7474}"
 MINIO_CONSOLE_PORT="${MINIO_CONSOLE_PORT:-9001}"
 COGNITO_PORT="${COGNITO_PORT:-9229}"
+COGNITO_UI_PORT="${COGNITO_UI_PORT:-9230}"
 POSTGRES_USER="${POSTGRES_USER:-langgraph_user}"
 POSTGRES_DB="${POSTGRES_DB:-langgraph_app}"
 REDIS_PASSWORD="${REDIS_PASSWORD:-change_me_redis_2026}"
@@ -252,6 +253,13 @@ fi
 
 if service_enabled cognito; then
   printf '\n===== Cognito Local =====\n'
+  retry_http "Cognito Local HTTPS UI" "https://${PLATFORM_HOSTNAME}:${COGNITO_UI_PORT}/" --insecure --resolve "${PLATFORM_HOSTNAME}:${COGNITO_UI_PORT}:127.0.0.1"
+  cognito_ui="$(curl -fsS --insecure --resolve "${PLATFORM_HOSTNAME}:${COGNITO_UI_PORT}:127.0.0.1" "https://${PLATFORM_HOSTNAME}:${COGNITO_UI_PORT}/")"
+  [[ "$cognito_ui" == *"Cognito Local"* && "$cognito_ui" == *"User Pools"* ]] || {
+    echo "Cognito Local HTTPS landing UI did not return the expected page." >&2
+    exit 1
+  }
+  echo "Cognito Local HTTPS landing UI: ok"
   retry_cognito
   issuer="http://${PLATFORM_HOSTNAME}:${COGNITO_PORT}"
   docker exec "$COGNITO_CONTAINER_NAME" cat /app/.cognito/config.json | grep -Fq "\"IssuerDomain\": \"$issuer\"" || {
