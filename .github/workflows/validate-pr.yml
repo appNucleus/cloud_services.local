@@ -46,6 +46,7 @@ jobs:
           set_value ADMIN_UI_HOST_BIND '127.0.0.1'
           set_value DASHBOARD_HOST_BIND '127.0.0.1'
           set_value PLATFORM_HOSTNAME 'aws.home.arpa'
+          set_value VERIFY_HOST_CADDY 'false'
           set_value ENABLE_POSTGRES 'false'
           set_value ENABLE_REDIS 'false'
           set_value ENABLE_NEO4J 'false'
@@ -109,6 +110,7 @@ jobs:
           set -euo pipefail
           cleanup() {
             docker compose --env-file "$DEPLOY_ENV_FILE" --profile '*' down -v --remove-orphans >/dev/null 2>&1 || true
+            docker volume rm -f db-cognito-data >/dev/null 2>&1 || true
           }
           trap cleanup EXIT
 
