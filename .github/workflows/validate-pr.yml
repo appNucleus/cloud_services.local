@@ -149,6 +149,25 @@ jobs:
           printf '%s' "$raw_users" | grep -Fq '"Username":"preflight-user"'
           printf '%s' "$raw_users" | grep -Fq '"Name":"name","Value":"Preflight User"'
 
+          username_pool_details="$(curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            "https://aws.home.arpa:9230/api/pools/$pool_id")"
+          if printf '%s' "$username_pool_details" | grep -Fq '"UsernameAttributes":["email"]'; then
+            echo "New console-created pool unexpectedly uses email-as-username mode." >&2
+            exit 1
+          fi
+
+          legacy_pool_json="$(curl -fsS -X POST \
+            -H 'Content-Type: application/x-amz-json-1.1' \
+            -H 'X-Amz-Target: AWSCognitoIdentityProviderService.CreateUserPool' \
+            --data '{"PoolName":"LegacyEmailPool","UsernameAttributes":["email"]}' \
+            http://127.0.0.1:9229/)"
+          legacy_pool_id="$(printf '%s' "$legacy_pool_json" | sed -n 's/.*"Id":"\([^"]*\)".*/\1/p')"
+          [[ -n "$legacy_pool_id" ]]
+          legacy_pool_details="$(curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            "https://aws.home.arpa:9230/api/pools/$legacy_pool_id")"
+          printf '%s' "$legacy_pool_details" | grep -Fq '"UsernameAttributes":["email"]'
+          echo "Cognito pool username-mode detection: ok"
+
           curl -fsS -X POST \
             -H 'Content-Type: application/x-amz-json-1.1' \
             -H 'X-Amz-Target: AWSCognitoIdentityProviderService.ListUserPools' \
