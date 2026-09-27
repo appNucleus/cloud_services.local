@@ -110,10 +110,10 @@ configure_service_selection() {
 
   if service_enabled cognito; then
     enabled_profiles+=(cognito)
-    enabled_services+=(cognito)
+    enabled_services+=(cognito cognito-ui)
   else
-    disabled_services+=(cognito)
-    disabled_containers+=("${COGNITO_CONTAINER_NAME:-db-cognito}")
+    disabled_services+=(cognito cognito-ui)
+    disabled_containers+=("${COGNITO_CONTAINER_NAME:-db-cognito}" "${COGNITO_UI_CONTAINER_NAME:-db-cognito-ui}")
   fi
 
   local joined=""
