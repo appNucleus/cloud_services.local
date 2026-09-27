@@ -152,39 +152,39 @@
     <section class="compat-grid" aria-label="AWS compatibility map">
       <article class="compat">
         <div class="compat-head"><div class="icon">PG</div><h3>PostgreSQL + pgvector</h3></div>
-        <div class="compat-row"><strong>AWS target</strong><span>Amazon Aurora Serverless v2 / Amazon RDS for PostgreSQL</span></div>
-        <div class="compat-row"><strong>Compatibility</strong><span>PostgreSQL protocol with pgvector-compatible migration path</span></div>
-        <div class="compat-row"><strong>Migration note</strong><span>Keep PostgreSQL semantics; validate extensions and capacity settings in AWS.</span></div>
+        <div class="compat-row"><strong>AWS target</strong><span>Amazon Aurora Serverless v2 for PostgreSQL</span></div>
+        <div class="compat-row"><strong>Lower fixed</strong><span>Amazon RDS for PostgreSQL</span></div>
+        <div class="compat-row"><strong>Compatibility</strong><span>PostgreSQL-compatible; pgvector-ready migration path</span></div>
       </article>
       <article class="compat">
         <div class="compat-head"><div class="icon">RD</div><h3>Redis</h3></div>
         <div class="compat-row"><strong>AWS target</strong><span>Amazon ElastiCache Serverless for Valkey / Redis OSS</span></div>
-        <div class="compat-row"><strong>Compatibility</strong><span>Redis-compatible cache and ephemeral-state access patterns</span></div>
-        <div class="compat-row"><strong>Migration note</strong><span>Remove the local endpoint override and review command/version compatibility.</span></div>
+        <div class="compat-row"><strong>Lower fixed</strong><span>Amazon ElastiCache node-based cache</span></div>
+        <div class="compat-row"><strong>Compatibility</strong><span>Redis-compatible client and command model; review version-specific commands</span></div>
       </article>
       <article class="compat">
         <div class="compat-head"><div class="icon">N4</div><h3>Neo4j</h3></div>
         <div class="compat-row"><strong>AWS target</strong><span>Amazon Neptune Serverless</span></div>
         <div class="compat-row"><strong>Closest Neo4j</strong><span>Neo4j Aura on AWS Marketplace</span></div>
-        <div class="compat-row"><strong>Migration note</strong><span>Graph schema/query semantics require review when moving from Neo4j to Neptune.</span></div>
+        <div class="compat-row"><strong>Compatibility</strong><span>Graph-native migration path; query/schema semantics require review for Neptune</span></div>
       </article>
       <article class="compat">
         <div class="compat-head"><div class="icon">S3</div><h3>MinIO</h3></div>
         <div class="compat-row"><strong>AWS target</strong><span>Amazon S3</span></div>
-        <div class="compat-row"><strong>Compatibility</strong><span>S3-compatible object API</span></div>
-        <div class="compat-row"><strong>Migration note</strong><span>Remove the local endpoint override and use AWS IAM plus the required S3 storage class.</span></div>
+        <div class="compat-row"><strong>Cost tiers</strong><span>S3 Standard, Intelligent-Tiering, and Glacier storage classes</span></div>
+        <div class="compat-row"><strong>Compatibility</strong><span>S3-compatible object API; remove the local endpoint override in AWS</span></div>
       </article>
       <article class="compat">
         <div class="compat-head"><div class="icon">SQ</div><h3>ElasticMQ</h3></div>
         <div class="compat-row"><strong>AWS target</strong><span>Amazon SQS</span></div>
-        <div class="compat-row"><strong>Compatibility</strong><span>Amazon SQS-compatible API for local development</span></div>
-        <div class="compat-row"><strong>Migration note</strong><span>Remove the endpoint override and use real SQS queues, policies, and IAM.</span></div>
+        <div class="compat-row"><strong>Interface</strong><span>Amazon SQS-compatible API</span></div>
+        <div class="compat-row"><strong>Compatibility</strong><span>Local queue semantics for development; use AWS queues, IAM, and policies in production</span></div>
       </article>
       <article class="compat">
         <div class="compat-head"><div class="icon">ID</div><h3>Cognito Local</h3></div>
         <div class="compat-row"><strong>AWS target</strong><span>Amazon Cognito User Pools</span></div>
-        <div class="compat-row"><strong>Compatibility</strong><span>Local User Pools emulator; not a full Identity Pools implementation</span></div>
-        <div class="compat-row"><strong>Migration note</strong><span>Remove the local endpoint override and align pools, clients, callbacks, and auth flows in AWS.</span></div>
+        <div class="compat-row"><strong>Local scope</strong><span>User Pools emulator; not a full Identity Pools implementation</span></div>
+        <div class="compat-row"><strong>Migration note</strong><span>Align pools, app clients, callback URLs, and auth flows in Amazon Cognito</span></div>
       </article>
     </section>
     <div class="note">“Enabled / Disabled” reflects the deployment configuration in <code>runtime.env</code>, not live health. Disabled services remain visible, their containers are removed, and their named Docker volumes are preserved for later re-enablement. <a href="https://github.com/appNucleus/cloud_services.local/blob/release/docs/DEFAULT_PASSWORDS.md">Credentials and access notes</a>.</div>
