@@ -120,10 +120,7 @@ async function handleApi(req, res, url) {
   if (req.method === "POST" && url.pathname === "/api/pools") {
     const input = await readJson(req);
     const name = requireString(input.name, "Pool name");
-    return sendJson(res, 201, await cognito("CreateUserPool", {
-      PoolName: name,
-      UsernameAttributes: []
-    }));
+    return sendJson(res, 201, await cognito("CreateUserPool", { PoolName: name }));
   }
 
   if (parts.length === 3 && parts[0] === "api" && parts[1] === "pools" && req.method === "DELETE") {
