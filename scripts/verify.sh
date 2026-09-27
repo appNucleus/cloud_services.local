@@ -74,11 +74,13 @@ retry_elasticmq() {
 retry_cognito() {
   local response deadline=$((SECONDS + SMOKE_READY_TIMEOUT))
   while (( SECONDS < deadline )); do
-    if response="$(curl -fsS --connect-timeout 2 --max-time 5 -X POST \
+    if response="$(curl -fsS --connect-timeout 2 --max-time 5 --insecure \
+      --resolve "${PLATFORM_HOSTNAME}:${COGNITO_PORT}:127.0.0.1" \
+      -X POST \
       -H 'Content-Type: application/x-amz-json-1.1' \
       -H 'X-Amz-Target: AWSCognitoIdentityProviderService.ListUserPools' \
       --data '{"MaxResults":1}' \
-      "http://127.0.0.1:${COGNITO_PORT}/" 2>/dev/null)" \
+      "https://${PLATFORM_HOSTNAME}:${COGNITO_PORT}/" 2>/dev/null)" \
       && [[ "$response" == *'"UserPools"'* ]]; then
       echo "Cognito Local User Pools API: ok"
       return 0
@@ -252,8 +254,15 @@ fi
 
 if service_enabled cognito; then
   printf '\n===== Cognito Local =====\n'
+  retry_http "Cognito Local HTTPS UI" "https://${PLATFORM_HOSTNAME}:${COGNITO_PORT}/" --insecure --resolve "${PLATFORM_HOSTNAME}:${COGNITO_PORT}:127.0.0.1"
+  cognito_ui="$(curl -fsS --insecure --resolve "${PLATFORM_HOSTNAME}:${COGNITO_PORT}:127.0.0.1" "https://${PLATFORM_HOSTNAME}:${COGNITO_PORT}/")"
+  [[ "$cognito_ui" == *"Cognito Local"* && "$cognito_ui" == *"User Pools"* ]] || {
+    echo "Cognito Local HTTPS landing UI did not return the expected page." >&2
+    exit 1
+  }
+  echo "Cognito Local HTTPS landing UI: ok"
   retry_cognito
-  issuer="http://${PLATFORM_HOSTNAME}:${COGNITO_PORT}"
+  issuer="https://${PLATFORM_HOSTNAME}:${COGNITO_PORT}"
   docker exec "$COGNITO_CONTAINER_NAME" cat /app/.cognito/config.json | grep -Fq "\"IssuerDomain\": \"$issuer\"" || {
     echo "Cognito Local issuer is not synchronized with PLATFORM_HOSTNAME: $issuer" >&2
     exit 1
