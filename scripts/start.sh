@@ -42,6 +42,7 @@ known_containers=(
   "${ELASTICMQ_CONTAINER_NAME:-db-elasticmq}"
   "${ELASTICMQ_UI_CONTAINER_NAME:-db-elasticmq-ui}"
   "${COGNITO_CONTAINER_NAME:-db-cognito}"
+  "${COGNITO_UI_CONTAINER_NAME:-db-cognito-ui}"
   "${UI_GATEWAY_CONTAINER_NAME:-db-ui-gateway}"
   "${DASHBOARD_CONTAINER_NAME:-db-dashboard}"
   "${MINIO_INIT_CONTAINER_NAME:-db-minio-init}"

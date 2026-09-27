@@ -24,7 +24,7 @@ LAN DNS should resolve this hostname to the Docker host. Do not router-port-forw
 | ElasticMQ SQS API | `http://aws.home.arpa:9324` |
 | ElasticMQ UI | `https://aws.home.arpa:9325` |
 | Cognito Local User Pools API | `http://aws.home.arpa:9229` |
-| Cognito Local UI | `https://aws.home.arpa:9230` |
+| Cognito Local management UI | `https://aws.home.arpa:9230` |
 
 Disabled logical services have no application container even though the shared UI gateway remains running.
 

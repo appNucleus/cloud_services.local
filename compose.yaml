@@ -276,6 +276,43 @@ services:
       start_period: 10s
     networks: [db_net]
 
+
+  cognito-ui:
+    profiles: [cognito]
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
+    mem_limit: ${COGNITO_UI_MEMORY_LIMIT:-256m}
+    cpus: ${COGNITO_UI_CPU_LIMIT:-0.5}
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+    image: ${COGNITO_UI_IMAGE:-jagregory/cognito-local:5.3.0}
+    container_name: ${COGNITO_UI_CONTAINER_NAME:-db-cognito-ui}
+    restart: unless-stopped
+    entrypoint: ["node", "/opt/cognito-ui/server.js"]
+    environment:
+      PORT: "8080"
+      COGNITO_ENDPOINT: http://cognito:9229/
+    volumes:
+      - ./www/cognito:/opt/cognito-ui:ro
+    depends_on:
+      cognito:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          node -e "require('http').get('http://127.0.0.1:8080/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    networks: [db_net]
+
   ui-gateway:
     security_opt:
       - no-new-privileges:true
@@ -303,7 +340,6 @@ services:
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${COGNITO_UI_PORT:-9230}:${COGNITO_UI_PORT:-9230}"
     volumes:
       - ./config/Caddyfile.ui:/etc/caddy/Caddyfile:ro
-      - ./www/cognito:/srv/cognito:ro
       - ui_gateway_data:/data
       - ui_gateway_config:/config
     networks: [db_net]

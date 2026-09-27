@@ -30,7 +30,5 @@ https://{$PLATFORM_HOSTNAME}:9325 {
 
 https://{$PLATFORM_HOSTNAME}:{$COGNITO_UI_PORT} {
     tls internal
-    root * /srv/cognito
-    header Cache-Control "no-store"
-    file_server
+    reverse_proxy cognito-ui:8080
 }

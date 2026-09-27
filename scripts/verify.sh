@@ -17,6 +17,7 @@ MINIO_CONTAINER_NAME="${MINIO_CONTAINER_NAME:-db-minio}"
 ELASTICMQ_CONTAINER_NAME="${ELASTICMQ_CONTAINER_NAME:-db-elasticmq}"
 ELASTICMQ_UI_CONTAINER_NAME="${ELASTICMQ_UI_CONTAINER_NAME:-db-elasticmq-ui}"
 COGNITO_CONTAINER_NAME="${COGNITO_CONTAINER_NAME:-db-cognito}"
+COGNITO_UI_CONTAINER_NAME="${COGNITO_UI_CONTAINER_NAME:-db-cognito-ui}"
 MINIO_INIT_CONTAINER_NAME="${MINIO_INIT_CONTAINER_NAME:-db-minio-init}"
 PLATFORM_HOSTNAME="${PLATFORM_HOSTNAME:-aws.home.arpa}"
 
@@ -161,8 +162,9 @@ fi
 
 if service_enabled cognito; then
   assert_service_running cognito
+  assert_service_running cognito-ui
 else
-  verify_disabled_group "Cognito Local" "$COGNITO_CONTAINER_NAME"
+  verify_disabled_group "Cognito Local" "$COGNITO_CONTAINER_NAME" "$COGNITO_UI_CONTAINER_NAME"
 fi
 
 # The MinIO initializer is always one-shot and must not remain after startup.
@@ -255,11 +257,17 @@ if service_enabled cognito; then
   printf '\n===== Cognito Local =====\n'
   retry_http "Cognito Local HTTPS UI" "https://${PLATFORM_HOSTNAME}:${COGNITO_UI_PORT}/" --insecure --resolve "${PLATFORM_HOSTNAME}:${COGNITO_UI_PORT}:127.0.0.1"
   cognito_ui="$(curl -fsS --insecure --resolve "${PLATFORM_HOSTNAME}:${COGNITO_UI_PORT}:127.0.0.1" "https://${PLATFORM_HOSTNAME}:${COGNITO_UI_PORT}/")"
-  [[ "$cognito_ui" == *"Cognito Local"* && "$cognito_ui" == *"User Pools"* ]] || {
-    echo "Cognito Local HTTPS landing UI did not return the expected page." >&2
+  [[ "$cognito_ui" == *"Cognito Local Console"* && "$cognito_ui" == *"New user"* ]] || {
+    echo "Cognito Local HTTPS management UI did not return the expected console." >&2
     exit 1
   }
-  echo "Cognito Local HTTPS landing UI: ok"
+  echo "Cognito Local HTTPS management UI: ok"
+  cognito_admin_state="$(curl -fsS --insecure --resolve "${PLATFORM_HOSTNAME}:${COGNITO_UI_PORT}:127.0.0.1" "https://${PLATFORM_HOSTNAME}:${COGNITO_UI_PORT}/api/pools")"
+  [[ "$cognito_admin_state" == *'"UserPools"'* ]] || {
+    echo "Cognito Local management UI backend cannot list User Pools." >&2
+    exit 1
+  }
+  echo "Cognito Local management UI backend: ok"
   retry_cognito
   issuer="http://${PLATFORM_HOSTNAME}:${COGNITO_PORT}"
   docker exec "$COGNITO_CONTAINER_NAME" cat /app/.cognito/config.json | grep -Fq "\"IssuerDomain\": \"$issuer\"" || {

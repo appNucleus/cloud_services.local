@@ -85,7 +85,7 @@ jobs:
                   neo4j) expected+=(neo4j) ;;
                   minio) expected+=(minio minio-init) ;;
                   elasticmq) expected+=(elasticmq elasticmq-ui) ;;
-                  cognito) expected+=(cognito) ;;
+                  cognito) expected+=(cognito cognito-ui) ;;
                 esac
               fi
               sed -i "s|^${keys[$i]}=.*|${keys[$i]}=${value}|" "$env_file"
@@ -117,31 +117,62 @@ jobs:
           bash ./scripts/start.sh --wait
           bash ./scripts/verify.sh
 
-          curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 https://aws.home.arpa:9230/ | grep -Fq 'Cognito Local'
+          curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 https://aws.home.arpa:9230/ | grep -Fq 'Cognito Local Console'
+
+          pool_json="$(curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            -H 'Content-Type: application/json' \
+            -X POST --data '{"name":"PreflightConsolePool"}' \
+            https://aws.home.arpa:9230/api/pools)"
+          printf '%s' "$pool_json" | grep -Fq 'PreflightConsolePool'
+          pool_id="$(printf '%s' "$pool_json" | sed -n 's/.*"Id":"\([^"]*\)".*/\1/p')"
+          [[ -n "$pool_id" ]]
+
+          curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            -H 'Content-Type: application/json' \
+            -X POST \
+            --data '{"username":"preflight@example.com","email":"preflight@example.com","password":"TempPass123!","permanent":true}' \
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users" | grep -Fq 'preflight@example.com'
+
+          curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users" | grep -Fq 'preflight@example.com'
+
           curl -fsS -X POST \
             -H 'Content-Type: application/x-amz-json-1.1' \
-            -H 'X-Amz-Target: AWSCognitoIdentityProviderService.CreateUserPool' \
-            --data '{"PoolName":"PreflightPersistencePool"}' \
-            http://127.0.0.1:9229/ | grep -Fq 'PreflightPersistencePool'
+            -H 'X-Amz-Target: AWSCognitoIdentityProviderService.ListUserPools' \
+            --data '{"MaxResults":60}' \
+            http://127.0.0.1:9229/ | grep -Fq 'PreflightConsolePool'
 
           sed -i 's/^ENABLE_COGNITO=.*/ENABLE_COGNITO=false/' "$DEPLOY_ENV_FILE"
           bash ./scripts/start.sh --wait
           bash ./scripts/verify.sh
           ! docker container inspect db-cognito >/dev/null 2>&1
+          ! docker container inspect db-cognito-ui >/dev/null 2>&1
           docker volume inspect db-cognito-data >/dev/null
 
           sed -i 's/^ENABLE_COGNITO=.*/ENABLE_COGNITO=true/' "$DEPLOY_ENV_FILE"
           bash ./scripts/start.sh --wait
           bash ./scripts/verify.sh
 
-          curl -fsS -X POST \
-            -H 'Content-Type: application/x-amz-json-1.1' \
-            -H 'X-Amz-Target: AWSCognitoIdentityProviderService.ListUserPools' \
-            --data '{"MaxResults":60}' \
-            http://127.0.0.1:9229/ | grep -Fq 'PreflightPersistencePool'
+          curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            https://aws.home.arpa:9230/api/pools | grep -Fq 'PreflightConsolePool'
+          curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users" | grep -Fq 'preflight@example.com'
+
+          curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            -H 'Content-Type: application/json' \
+            -X POST --data '{"password":"UpdatedPass123!","permanent":true}' \
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users/preflight%40example.com/password" | grep -Fq '"ok":true'
+
+          curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            -X DELETE \
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users/preflight%40example.com" | grep -Fq '"ok":true'
+          if curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users" | grep -Fq 'preflight@example.com'; then
+            echo "Cognito management UI failed to delete the test user." >&2
+            exit 1
+          fi
 
           docker port db-cognito 9229/tcp | grep -Fq '9229'
           docker port db-ui-gateway 9230/tcp | grep -Fq '9230'
-          echo "Cognito API :9229 and HTTPS UI :9230 are independently published: ok"
-
-          echo "Cognito enable/disable/re-enable persistence test passed."
+          echo "Cognito API :9229 and HTTPS management UI :9230 are independently published: ok"
+          echo "Cognito management UI CRUD and enable/disable/re-enable persistence test passed."
