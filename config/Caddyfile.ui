@@ -27,3 +27,22 @@ https://{$PLATFORM_HOSTNAME}:9325 {
     tls internal
     reverse_proxy elasticmq-ui:3000
 }
+
+https://{$PLATFORM_HOSTNAME}:9229 {
+    tls internal
+
+    @cognito_home {
+        method GET
+        path /
+    }
+
+    handle @cognito_home {
+        root * /srv/cognito
+        header Cache-Control "no-store"
+        file_server
+    }
+
+    handle {
+        reverse_proxy cognito:9229
+    }
+}
