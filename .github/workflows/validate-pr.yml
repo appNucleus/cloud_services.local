@@ -127,14 +127,27 @@ jobs:
           pool_id="$(printf '%s' "$pool_json" | sed -n 's/.*"Id":"\([^"]*\)".*/\1/p')"
           [[ -n "$pool_id" ]]
 
-          curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+          user_json="$(curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
             -H 'Content-Type: application/json' \
             -X POST \
-            --data '{"username":"preflight@example.com","email":"preflight@example.com","password":"TempPass123!","permanent":true}' \
-            "https://aws.home.arpa:9230/api/pools/$pool_id/users" | grep -Fq 'preflight@example.com'
+            --data '{"username":"preflight-user","fullName":"Preflight User","email":"preflight@example.com","password":"TempPass123!","permanent":true}' \
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users")"
+          printf '%s' "$user_json" | grep -Fq '"Username":"preflight-user"'
+          printf '%s' "$user_json" | grep -Fq '"Name":"name","Value":"Preflight User"'
+          printf '%s' "$user_json" | grep -Fq '"Name":"email","Value":"preflight@example.com"'
 
-          curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
-            "https://aws.home.arpa:9230/api/pools/$pool_id/users" | grep -Fq 'preflight@example.com'
+          users_json="$(curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users")"
+          printf '%s' "$users_json" | grep -Fq '"Username":"preflight-user"'
+          printf '%s' "$users_json" | grep -Fq '"Name":"name","Value":"Preflight User"'
+
+          raw_users="$(curl -fsS -X POST \
+            -H 'Content-Type: application/x-amz-json-1.1' \
+            -H 'X-Amz-Target: AWSCognitoIdentityProviderService.ListUsers' \
+            --data "{\"UserPoolId\":\"$pool_id\",\"Limit\":60}" \
+            http://127.0.0.1:9229/)"
+          printf '%s' "$raw_users" | grep -Fq '"Username":"preflight-user"'
+          printf '%s' "$raw_users" | grep -Fq '"Name":"name","Value":"Preflight User"'
 
           curl -fsS -X POST \
             -H 'Content-Type: application/x-amz-json-1.1' \
@@ -155,19 +168,21 @@ jobs:
 
           curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
             https://aws.home.arpa:9230/api/pools | grep -Fq 'PreflightConsolePool'
-          curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
-            "https://aws.home.arpa:9230/api/pools/$pool_id/users" | grep -Fq 'preflight@example.com'
+          persisted_users="$(curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users")"
+          printf '%s' "$persisted_users" | grep -Fq '"Username":"preflight-user"'
+          printf '%s' "$persisted_users" | grep -Fq '"Name":"name","Value":"Preflight User"'
 
           curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
             -H 'Content-Type: application/json' \
             -X POST --data '{"password":"UpdatedPass123!","permanent":true}' \
-            "https://aws.home.arpa:9230/api/pools/$pool_id/users/preflight%40example.com/password" | grep -Fq '"ok":true'
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users/preflight-user/password" | grep -Fq '"ok":true'
 
           curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
             -X DELETE \
-            "https://aws.home.arpa:9230/api/pools/$pool_id/users/preflight%40example.com" | grep -Fq '"ok":true'
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users/preflight-user" | grep -Fq '"ok":true'
           if curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
-            "https://aws.home.arpa:9230/api/pools/$pool_id/users" | grep -Fq 'preflight@example.com'; then
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users" | grep -Fq 'preflight-user'; then
             echo "Cognito management UI failed to delete the test user." >&2
             exit 1
           fi
