@@ -117,6 +117,12 @@ async function handleApi(req, res, url) {
     return sendJson(res, 200, await cognito("ListUserPools", { MaxResults: 60 }));
   }
 
+  if (parts.length === 3 && parts[0] === "api" && parts[1] === "pools" && req.method === "GET") {
+    return sendJson(res, 200, await cognito("DescribeUserPool", {
+      UserPoolId: requireString(parts[2], "User pool ID")
+    }));
+  }
+
   if (req.method === "POST" && url.pathname === "/api/pools") {
     const input = await readJson(req);
     const name = requireString(input.name, "Pool name");

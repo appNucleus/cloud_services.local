@@ -97,6 +97,7 @@
         <div>
           <h2 id="poolTitle">Select a User Pool</h2>
           <code id="poolId"></code>
+          <div style="margin-top:8px"><span id="poolMode" class="status">MODE UNKNOWN</span></div>
         </div>
         <div class="actions">
           <button id="refreshBtn" class="ghost" disabled>Refresh</button>
@@ -133,13 +134,14 @@
     <div class="toolbar"><h2>Create User</h2><button class="ghost" data-close="userModal">Close</button></div>
     <form id="userForm" class="form">
       <div class="form-row">
-        <div class="field"><label for="username">Username</label><input id="username" autocomplete="off" required placeholder="abrar"></div>
+        <div class="field"><label id="usernameLabel" for="username">Username</label><input id="username" autocomplete="off" required placeholder="abrar"></div>
         <div class="field"><label for="fullName">Full name</label><input id="fullName" autocomplete="name" required placeholder="Abrar Jahin"></div>
       </div>
       <div class="form-row">
         <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="off" placeholder="abrar@example.com"></div>
         <div class="field"><label for="password">Password</label><input id="password" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters"></div>
       </div>
+      <div id="usernameModeHelp" style="color:var(--muted);font-size:12px;line-height:1.45"></div>
       <label style="display:flex;gap:8px;align-items:center;color:var(--muted);font-size:13px"><input id="permanent" type="checkbox" checked style="width:auto"> Set password as permanent</label>
       <button type="submit">Create user</button>
     </form>
@@ -148,7 +150,7 @@
 
 <script>
 (() => {
-  const state = { pools: [], selectedPool: null, users: [] };
+  const state = { pools: [], selectedPool: null, users: [], emailUsernameMode: false };
   const $ = id => document.getElementById(id);
   const apiEndpoint = `http://${location.hostname}:9229`;
   $("apiEndpoint").textContent = apiEndpoint;
@@ -284,6 +286,8 @@
         $("poolTitle").textContent = "Select a User Pool";
         $("poolId").textContent = "";
         $("selectedPoolSummary").textContent = "none";
+        $("poolMode").textContent = "MODE UNKNOWN";
+        $("poolMode").className = "status";
         $("refreshBtn").disabled = true;
         $("newUserBtn").disabled = true;
         $("deletePoolBtn").disabled = true;
@@ -307,10 +311,20 @@
     if (rerender) renderPools();
 
     try {
-      const data = await request(`/api/pools/${encodeURIComponent(pool.Id)}/users`);
+      const [details, data] = await Promise.all([
+        request(`/api/pools/${encodeURIComponent(pool.Id)}`),
+        request(`/api/pools/${encodeURIComponent(pool.Id)}/users`)
+      ]);
+      const usernameAttributes = (details.UserPool && details.UserPool.UsernameAttributes) || [];
+      state.emailUsernameMode = usernameAttributes.includes("email");
+      $("poolMode").textContent = state.emailUsernameMode ? "EMAIL USERNAME MODE" : "USERNAME MODE";
+      $("poolMode").className = "status " + (state.emailUsernameMode ? "" : "ok");
       state.users = data.Users || [];
       renderUsers();
     } catch (err) {
+      state.emailUsernameMode = false;
+      $("poolMode").textContent = "MODE UNKNOWN";
+      $("poolMode").className = "status bad";
       state.users = [];
       renderUsers();
       notice(err.message, "error");
@@ -321,7 +335,21 @@
   $("newUserBtn").addEventListener("click", () => {
     $("userForm").reset();
     $("permanent").checked = true;
-    if (state.selectedPool) openModal("userModal");
+    if (!state.selectedPool) return;
+
+    if (state.emailUsernameMode) {
+      $("usernameLabel").textContent = "Email username";
+      $("username").type = "email";
+      $("username").placeholder = "user@example.com";
+      $("usernameModeHelp").textContent = "This existing pool was created in email-as-username mode. Cognito requires the Username value to be an email address for this pool. Create a new User Pool to use normal usernames.";
+    } else {
+      $("usernameLabel").textContent = "Username";
+      $("username").type = "text";
+      $("username").placeholder = "abrar";
+      $("usernameModeHelp").textContent = "This pool uses normal username mode. Cognito stores the username exactly as entered.";
+    }
+
+    openModal("userModal");
   });
   $("refreshBtn").addEventListener("click", () => state.selectedPool && selectPool(state.selectedPool));
 
