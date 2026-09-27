@@ -120,7 +120,10 @@ async function handleApi(req, res, url) {
   if (req.method === "POST" && url.pathname === "/api/pools") {
     const input = await readJson(req);
     const name = requireString(input.name, "Pool name");
-    return sendJson(res, 201, await cognito("CreateUserPool", { PoolName: name }));
+    return sendJson(res, 201, await cognito("CreateUserPool", {
+      PoolName: name,
+      UsernameAttributes: []
+    }));
   }
 
   if (parts.length === 3 && parts[0] === "api" && parts[1] === "pools" && req.method === "DELETE") {
@@ -135,10 +138,13 @@ async function handleApi(req, res, url) {
   if (parts.length === 4 && parts[0] === "api" && parts[1] === "pools" && parts[3] === "users" && req.method === "POST") {
     const input = await readJson(req);
     const userPoolId = requireString(parts[2], "User pool ID");
-    const username = requireString(input.username || input.email, "Username");
+    const username = requireString(input.username, "Username");
+    const fullName = requireString(input.fullName, "Full name");
     const password = requireString(input.password, "Password");
     const email = typeof input.email === "string" ? input.email.trim() : "";
-    const attributes = [];
+    const attributes = [
+      { Name: "name", Value: fullName }
+    ];
 
     if (email) {
       attributes.push({ Name: "email", Value: email });
