@@ -16,7 +16,7 @@ cat > "$output" <<EOF_JSON
     "port": 9229
   },
   "TokenConfig": {
-    "IssuerDomain": "https://${PLATFORM_HOSTNAME:-aws.home.arpa}:${COGNITO_PORT:-9229}"
+    "IssuerDomain": "http://${PLATFORM_HOSTNAME:-aws.home.arpa}:${COGNITO_PORT:-9229}"
   }
 }
 EOF_JSON
