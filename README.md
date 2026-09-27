@@ -19,7 +19,7 @@ Six logical services can be enabled or disabled independently from the persisten
 | Neo4j | `db-neo4j` | Neptune / Neo4j Aura |
 | MinIO | `db-minio`, temporary `db-minio-init` | S3 |
 | ElasticMQ | `db-elasticmq`, `db-elasticmq-ui` | SQS |
-| Cognito Local | `db-cognito` | Cognito User Pools |
+| Cognito Local | `db-cognito`, `db-cognito-ui` | Cognito User Pools |
 
 Platform infrastructure is always enabled:
 
@@ -79,7 +79,7 @@ With all logical services enabled:
 | ElasticMQ SQS API | `http://aws.home.arpa:9324` |
 | ElasticMQ UI | `https://aws.home.arpa:9325` |
 | Cognito Local User Pools API | `http://aws.home.arpa:9229` |
-| Cognito Local UI | `https://aws.home.arpa:9230` |
+| Cognito Local management UI | `https://aws.home.arpa:9230` |
 
 Containers on `db-local-net` should use Compose service names (`postgres`, `redis`, `neo4j`, `minio`, `elasticmq`, `cognito`) rather than hairpinning through the host.
 
@@ -113,7 +113,7 @@ The stack uses the pinned image:
 jagregory/cognito-local:5.3.0
 ```
 
-Cognito Local is a development emulator for **Amazon Cognito User Pools**, not a complete Cognito/Identity Pools implementation. The API remains a direct local service at `http://aws.home.arpa:9229`. A separate lightweight browser UI is served over internal TLS at `https://aws.home.arpa:9230`; the UI does not proxy Cognito API traffic.
+Cognito Local is a development emulator for **Amazon Cognito User Pools**, not a complete Cognito/Identity Pools implementation. The API remains a direct local service at `http://aws.home.arpa:9229`; a normal browser `GET /` is not an admin page because Cognito Local exposes an AWS-compatible JSON API. A separate `db-cognito-ui` companion provides a functional management console over internal TLS at `https://aws.home.arpa:9230`. The console has its own small server-side management API and calls `db-cognito` over the private Compose network; it does not expose or proxy the raw Cognito API through port `9230`.
 
 Persistent state is stored in:
 
@@ -127,7 +127,13 @@ Deployment generates Cognito Local configuration and synchronizes it into the pr
 http://aws.home.arpa:9229
 ```
 
-The smoke test calls the User Pools `ListUserPools` API rather than relying only on an open TCP port.
+The management console supports:
+
+- list/create/delete User Pools
+- list/create/delete users
+- set a user's permanent password
+
+The smoke test calls the User Pools `ListUserPools` API, verifies the HTTPS console backend can list pools, and validates the UI/API containers independently.
 
 ## Deployment model
 
