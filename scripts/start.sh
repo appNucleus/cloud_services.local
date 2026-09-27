@@ -134,6 +134,16 @@ if service_enabled cognito; then
     "$cognito_image" \
     -c 'cp /tmp/config.json /app/.cognito/config.json && chmod 0644 /app/.cognito/config.json'
   echo "Cognito Local configuration synchronized into persistent volume: $cognito_volume"
+
+  # Cognito Local reads config at process startup, and the companion UI loads its
+  # server code at startup. Recreate only these two containers so repository/config
+  # updates take effect while preserving the external Cognito data volume.
+  for container_name in "${COGNITO_UI_CONTAINER_NAME:-db-cognito-ui}" "${COGNITO_CONTAINER_NAME:-db-cognito}"; do
+    if docker container inspect "$container_name" >/dev/null 2>&1; then
+      echo "Refreshing Cognito container: $container_name"
+      docker rm --force "$container_name" >/dev/null
+    fi
+  done
 fi
 
 up_args=(up --detach --remove-orphans)
