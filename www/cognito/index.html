@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cognito Local · aws.home.arpa</title>
+  <style>
+    :root { --bg:#0b1220; --panel:#0f172a; --border:rgba(148,163,184,.18); --text:#e5e7eb; --muted:#94a3b8; --blue:#93c5fd; --ok:#6ee7b7; --bad:#fda4af; --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace; --sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--text); font-family:var(--sans); background:radial-gradient(circle at 12% 10%,rgba(59,130,246,.24),transparent 30%),radial-gradient(circle at 86% 6%,rgba(34,211,238,.14),transparent 28%),var(--bg); }
+    main { width:min(980px,calc(100% - 32px)); margin:0 auto; padding:34px 0 48px; }
+    .hero,.panel { border:1px solid var(--border); border-radius:22px; background:rgba(15,23,42,.82); box-shadow:0 20px 60px rgba(0,0,0,.24); }
+    .hero { padding:26px; }
+    .eyebrow { display:inline-flex; align-items:center; gap:8px; border:1px solid rgba(52,211,153,.25); background:rgba(16,185,129,.08); color:var(--ok); border-radius:999px; padding:7px 10px; font:700 12px var(--mono); }
+    h1 { margin:16px 0 8px; font-size:clamp(32px,6vw,52px); letter-spacing:-.045em; }
+    p { color:var(--muted); line-height:1.55; }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:18px; }
+    .panel { padding:18px; }
+    .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.08em; }
+    code { color:var(--blue); font-family:var(--mono); word-break:break-all; }
+    .status { margin-top:8px; font-weight:750; }
+    .ok { color:var(--ok); } .bad { color:var(--bad); }
+    .toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:28px 0 12px; }
+    .toolbar h2 { margin:0; font-size:19px; }
+    button { border:1px solid rgba(96,165,250,.34); background:rgba(59,130,246,.13); color:#bfdbfe; border-radius:10px; padding:9px 12px; font-weight:700; cursor:pointer; }
+    table { width:100%; border-collapse:collapse; }
+    th,td { padding:12px 14px; border-bottom:1px solid rgba(148,163,184,.12); text-align:left; font-size:13px; }
+    th { color:#cbd5e1; font-size:11px; text-transform:uppercase; letter-spacing:.08em; }
+    td { color:var(--muted); } td:first-child { color:var(--text); font-weight:650; }
+    .empty { color:var(--muted); padding:18px 0 4px; }
+    .foot { margin-top:18px; color:var(--muted); font-size:13px; line-height:1.55; }
+    a { color:var(--blue); }
+    @media(max-width:700px){ .grid{grid-template-columns:1fr;} th:nth-child(3),td:nth-child(3){display:none;} }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="eyebrow">LOCAL COGNITO USER POOLS</div>
+    <h1>Cognito Local</h1>
+    <p>Browser landing page for the local Amazon Cognito User Pools emulator. The same HTTPS origin also proxies the Cognito-compatible API.</p>
+    <div class="grid">
+      <div class="panel"><div class="label">HTTPS endpoint</div><div><code id="endpoint"></code></div></div>
+      <div class="panel"><div class="label">Token issuer</div><div><code id="issuer"></code></div></div>
+      <div class="panel"><div class="label">API status</div><div id="status" class="status">Checking…</div></div>
+      <div class="panel"><div class="label">Scope</div><div class="status">User Pools emulator</div></div>
+    </div>
+  </section>
+  <div class="toolbar"><h2>User Pools</h2><button id="refresh" type="button">Refresh</button></div>
+  <section class="panel">
+    <div id="empty" class="empty">Loading user pools…</div>
+    <table id="table" hidden><thead><tr><th>Name</th><th>ID</th><th>Created</th></tr></thead><tbody id="rows"></tbody></table>
+  </section>
+  <div class="foot">This page is intentionally lightweight. Use AWS SDK/CLI with this endpoint for management operations. Cognito Local emulates User Pools for development and is not a complete Cognito Identity Pools replacement. <a href="https://aws.home.arpa/">Back to services dashboard</a>.</div>
+</main>
+<script>
+(() => {
+  const endpoint = location.origin;
+  document.getElementById('endpoint').textContent = endpoint;
+  document.getElementById('issuer').textContent = endpoint;
+  async function listPools() {
+    const status = document.getElementById('status'), empty = document.getElementById('empty'), table = document.getElementById('table'), rows = document.getElementById('rows');
+    status.textContent = 'Checking…'; status.className = 'status'; empty.textContent = 'Loading user pools…'; empty.hidden = false; table.hidden = true; rows.innerHTML = '';
+    try {
+      const response = await fetch('/', {method:'POST',headers:{'Content-Type':'application/x-amz-json-1.1','X-Amz-Target':'AWSCognitoIdentityProviderService.ListUserPools'},body:JSON.stringify({MaxResults:60})});
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const data = await response.json(), pools = Array.isArray(data.UserPools) ? data.UserPools : [];
+      status.textContent = 'API available'; status.className = 'status ok';
+      if (!pools.length) { empty.textContent = 'No user pools have been created yet.'; return; }
+      for (const pool of pools) {
+        const tr = document.createElement('tr'), created = pool.CreationDate ? new Date(pool.CreationDate).toLocaleString() : '—';
+        for (const value of [pool.Name || '—', pool.Id || '—', created]) { const td = document.createElement('td'); td.textContent = value; tr.appendChild(td); }
+        rows.appendChild(tr);
+      }
+      empty.hidden = true; table.hidden = false;
+    } catch (err) {
+      status.textContent = 'API unavailable'; status.className = 'status bad'; empty.textContent = 'Could not load User Pools: ' + err.message;
+    }
+  }
+  document.getElementById('refresh').addEventListener('click', listPools);
+  listPools();
+})();
+</script>
+</body>
+</html>
