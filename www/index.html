@@ -76,7 +76,6 @@
     @media (max-width: 980px) { .cards { grid-template-columns: repeat(2,minmax(0,1fr)); } .hero-top { flex-direction: column; } .hero-actions { justify-content: flex-start; } }
     @media (max-width: 640px) { .shell { width: min(100% - 22px,1220px); padding-top: 16px; } .hero { padding: 22px; } .cards { grid-template-columns: 1fr; } th:nth-child(4),td:nth-child(4) { display:none; } }
   </style>
-  <script src="/runtime-config.js"></script>
 </head>
 <body>
   <main class="shell">
@@ -161,6 +160,7 @@
 
   <script>
     (() => {
+      const renderDashboard = () => {
       const cfg = window.CLOUD_SERVICES_CONFIG || {
         hostname: 'aws.home.arpa',
         services: { postgres: true, redis: true, neo4j: true, minio: true, elasticmq: true, cognito: true },
@@ -214,6 +214,13 @@
           cell.className = enabled ? 'state-enabled' : 'state-disabled';
         }
       }
+      };
+
+      const runtimeScript = document.createElement('script');
+      runtimeScript.src = `/runtime-config.js?t=${Date.now()}`;
+      runtimeScript.onload = renderDashboard;
+      runtimeScript.onerror = renderDashboard;
+      document.head.appendChild(runtimeScript);
     })();
   </script>
 </body>

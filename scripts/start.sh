@@ -98,18 +98,25 @@ if (( ${#disabled_containers[@]} > 0 )); then
   done
 fi
 
-# Cognito Local reads .cognito/config.json from its persistent volume. Copy the
-# generated config into that volume before startup so issuer settings are always
-# synchronized with PLATFORM_HOSTNAME while user-pool data remains persistent.
+# Cognito Local uses an intentionally external named volume so existing user-pool
+# data survives service toggles and migrations without Compose ownership warnings.
+# Cognito writes its config file at runtime, so seed the generated config into the
+# writable persistent volume before startup instead of bind-mounting it read-only.
 if service_enabled cognito; then
   cognito_image="${COGNITO_IMAGE:-jagregory/cognito-local:5.3.0}"
   cognito_volume="${COGNITO_VOLUME_NAME:-db-cognito-data}"
   cognito_config="$(repo_path "${COGNITO_CONFIG_FILE:-./generated/cognito/config.json}")"
 
+  if docker volume inspect "$cognito_volume" >/dev/null 2>&1; then
+    echo "Using Cognito Local persistent volume: $cognito_volume"
+  else
+    docker volume create "$cognito_volume" >/dev/null
+    echo "Created Cognito Local persistent volume: $cognito_volume"
+  fi
+
   if ! docker image inspect "$cognito_image" >/dev/null 2>&1; then
     docker pull "$cognito_image"
   fi
-  docker volume create "$cognito_volume" >/dev/null
   docker run --rm \
     --entrypoint /bin/sh \
     --mount "type=volume,src=$cognito_volume,dst=/app/.cognito" \

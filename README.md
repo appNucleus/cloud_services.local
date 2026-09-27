@@ -120,7 +120,7 @@ Persistent state is stored in:
 db-cognito-data
 ```
 
-Deployment generates Cognito Local configuration and synchronizes it into the persistent volume before startup. The configured token issuer is:
+Deployment generates Cognito Local configuration and synchronizes it into the preserved external named volume before startup; Cognito can then update its own writable config while user-pool data remains persistent. The configured token issuer is:
 
 ```text
 http://aws.home.arpa:9229
@@ -173,7 +173,7 @@ Rollback restores the previous source tree and previous `runtime.env`. It never 
 
 ## Dashboard state generation
 
-`scripts/generate-dashboard-state.sh` assembles a non-secret runtime dashboard bundle under `generated/dashboard/`: it copies the static files from `www/` and writes `runtime-config.js` beside them. Nginx mounts that generated directory read-only as its document root, avoiding nested bind mounts inside a read-only container.
+`scripts/generate-dashboard-state.sh` regenerates the non-secret `www/runtime-config.js` file from `runtime.env`. Nginx continues to mount the stable tracked `www/` directory read-only, matching the pre-feature dashboard deployment model while still reflecting enabled/disabled service state.
 
 The generated state contains only:
 

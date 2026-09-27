@@ -66,4 +66,13 @@ fi
 configure_service_selection
 printf 'Enabled profiles: %s\n' "${COMPOSE_PROFILES:-<none>}"
 echo "Platform hostname: $platform_hostname"
+
+case "${VERIFY_HOST_CADDY:-auto}" in
+  true|false|auto) ;;
+  *)
+    echo "Refusing deployment: VERIFY_HOST_CADDY must be true, false, or auto." >&2
+    exit 1
+    ;;
+esac
+
 echo "Runtime environment validation: OK (no secret values were logged)"

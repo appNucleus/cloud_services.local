@@ -11,6 +11,10 @@ if [[ "$answer" != "DELETE" ]]; then
   echo "Cancelled."
   exit 0
 fi
+cognito_volume="${COGNITO_VOLUME_NAME:-db-cognito-data}"
 compose_all_profiles down -v --remove-orphans
+if docker volume inspect "$cognito_volume" >/dev/null 2>&1; then
+  docker volume rm "$cognito_volume" >/dev/null
+fi
 rm -rf -- "$(repo_path "$GENERATED_DIR")"
-echo "Deleted all stack data."
+echo "Deleted all stack data, including the external Cognito Local volume."

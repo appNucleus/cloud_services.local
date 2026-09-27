@@ -327,7 +327,7 @@ services:
     ports:
       - "${DASHBOARD_HOST_BIND:-127.0.0.1}:${DASHBOARD_PORT:-8003}:80"
     volumes:
-      - ${DASHBOARD_GENERATED_DIR:-./generated/dashboard}:/usr/share/nginx/html:ro
+      - ${DASHBOARD_WWW_DIR:-./www}:/usr/share/nginx/html:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/index.html && wget -q -O /dev/null http://127.0.0.1/runtime-config.js || exit 1"]
       interval: 10s
@@ -398,6 +398,7 @@ volumes:
   elasticmq_data:
     name: ${ELASTICMQ_VOLUME_NAME:-db-elasticmq-data}
   cognito_data:
+    external: true
     name: ${COGNITO_VOLUME_NAME:-db-cognito-data}
   ui_gateway_data:
     name: ${UI_GATEWAY_DATA_VOLUME_NAME:-db-ui-gateway-data}
