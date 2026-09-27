@@ -120,7 +120,7 @@ Persistent state is stored in:
 db-cognito-data
 ```
 
-Deployment generates Cognito Local configuration and bind-mounts it read-only while the user-pool database remains in the preserved external named volume. The configured token issuer is:
+Deployment generates Cognito Local configuration and synchronizes it into the preserved external named volume before startup; Cognito can then update its own writable config while user-pool data remains persistent. The configured token issuer is:
 
 ```text
 http://aws.home.arpa:9229
