@@ -183,6 +183,20 @@
     return item ? item.Value : "—";
   }
 
+  function formatTimestamp(value) {
+    if (value === null || value === undefined || value === "") return "—";
+
+    const numeric = typeof value === "number"
+      ? value
+      : (typeof value === "string" && /^\d+(?:\.\d+)?$/.test(value.trim()) ? Number(value) : null);
+
+    const date = numeric !== null
+      ? new Date(numeric < 1e12 ? numeric * 1000 : numeric)
+      : new Date(value);
+
+    return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+  }
+
   function renderPools() {
     const list = $("poolList");
     list.textContent = "";
@@ -222,7 +236,7 @@
         attr(user, "email"),
         user.UserStatus || "—",
         user.Enabled === false ? "No" : "Yes",
-        user.UserCreateDate ? new Date(user.UserCreateDate).toLocaleString() : "—"
+        formatTimestamp(user.UserCreateDate)
       ];
       for (let i = 0; i < values.length; i++) {
         const td = document.createElement("td");
