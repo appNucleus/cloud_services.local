@@ -15,15 +15,12 @@ concurrency:
 jobs:
   deploy:
     name: Deploy Docker DB stack
-
     runs-on:
       - self-hosted
       - Linux
       - X64
       - dbs-prod
-
     timeout-minutes: 30
-
     defaults:
       run:
         shell: bash
@@ -37,7 +34,6 @@ jobs:
       - name: Configure deployment environment file
         run: |
           set -euo pipefail
-
           {
             echo "DEPLOY_ENV_FILE=$HOME/.config/db.local/runtime.env"
             echo "ROLLBACK_STATE_DIR=$RUNNER_TEMP/db-local-rollback"
@@ -46,24 +42,19 @@ jobs:
       - name: Verify deployment prerequisites
         run: |
           set -euo pipefail
-
           echo "Checking shell-script syntax..."
           for script in scripts/*.sh; do
             echo "Checking: $script"
             bash -n "$script"
           done
-
           echo "Checking server prerequisites..."
           bash ./scripts/verify-server.sh
-
           echo "All deployment prerequisites passed."
 
       - name: Initialize persistent runtime environment
         run: |
           set -euo pipefail
-
           mkdir -p "$(dirname "$DEPLOY_ENV_FILE")"
-
           if [[ ! -f "$DEPLOY_ENV_FILE" ]]; then
             install -m 600 .env.example "$DEPLOY_ENV_FILE"
             echo "Created persistent runtime environment file: $DEPLOY_ENV_FILE"
@@ -73,25 +64,12 @@ jobs:
           fi
 
           set_runtime_env_value_if_missing() {
-            local key="$1"
-            local value="$2"
-            local file="$3"
-
-            if ! grep -qE "^${key}=" "$file"; then
-              printf '\n%s=%s\n' "$key" "$value" >> "$file"
-            fi
+            local key="$1" value="$2" file="$3"
+            if ! grep -qE "^${key}=" "$file"; then printf '\n%s=%s\n' "$key" "$value" >> "$file"; fi
           }
-
           set_runtime_env_value() {
-            local key="$1"
-            local value="$2"
-            local file="$3"
-
-            if grep -qE "^${key}=" "$file"; then
-              sed -i "s|^${key}=.*|${key}=${value}|" "$file"
-            else
-              printf '\n%s=%s\n' "$key" "$value" >> "$file"
-            fi
+            local key="$1" value="$2" file="$3"
+            if grep -qE "^${key}=" "$file"; then sed -i "s|^${key}=.*|${key}=${value}|" "$file"; else printf '\n%s=%s\n' "$key" "$value" >> "$file"; fi
           }
 
           set_runtime_env_value_if_missing ACTIONS_ROOT '${HOME}/actions_db.local' "$DEPLOY_ENV_FILE"
@@ -100,6 +78,9 @@ jobs:
           set_runtime_env_value_if_missing DEPLOY_LOG_TAIL '200' "$DEPLOY_ENV_FILE"
           set_runtime_env_value_if_missing RUN_MINIO_INIT 'true' "$DEPLOY_ENV_FILE"
 
+          # Canonical platform hostname migration. This repository now uses a
+          # single aws.home.arpa hostname for dashboard/UI/API documentation.
+          set_runtime_env_value PLATFORM_HOSTNAME 'aws.home.arpa' "$DEPLOY_ENV_FILE"
           set_runtime_env_value DB_HOST_BIND '0.0.0.0' "$DEPLOY_ENV_FILE"
           set_runtime_env_value ADMIN_UI_HOST_BIND '127.0.0.1' "$DEPLOY_ENV_FILE"
           set_runtime_env_value DASHBOARD_HOST_BIND '127.0.0.1' "$DEPLOY_ENV_FILE"
@@ -109,15 +90,12 @@ jobs:
           # shellcheck disable=SC1090
           source "$DEPLOY_ENV_FILE"
           set +a
-
           ACTIONS_ROOT="${ACTIONS_ROOT:-$HOME/actions_db.local}"
           BACKUP_ROOT="${BACKUP_ROOT:-$HOME/backup_db.local}"
           COMPOSE_WAIT_TIMEOUT="${COMPOSE_WAIT_TIMEOUT:-600}"
           DEPLOY_LOG_TAIL="${DEPLOY_LOG_TAIL:-200}"
           RUN_MINIO_INIT="${RUN_MINIO_INIT:-true}"
-
           mkdir -p "$ACTIONS_ROOT" "$BACKUP_ROOT"
-
           {
             echo "ACTIONS_ROOT=$ACTIONS_ROOT"
             echo "BACKUP_ROOT=$BACKUP_ROOT"
@@ -125,7 +103,6 @@ jobs:
             echo "DEPLOY_LOG_TAIL=$DEPLOY_LOG_TAIL"
             echo "RUN_MINIO_INIT=$RUN_MINIO_INIT"
           } >> "$GITHUB_ENV"
-
           echo "Actions root: $ACTIONS_ROOT"
           echo "Backup root:  $BACKUP_ROOT"
 
@@ -142,51 +119,63 @@ jobs:
       - name: Validate candidate Compose configuration
         run: |
           set -euo pipefail
-
-          bash ./scripts/generate-pgadmin-config.sh
-
-          docker compose \
-            --env-file "$DEPLOY_ENV_FILE" \
-            config \
-            >/dev/null
-
-          echo "Docker Compose configuration is valid."
+          # shellcheck source=scripts/common.sh
+          source ./scripts/common.sh
+          load_runtime_env
+          configure_service_selection
+          bash ./scripts/generate-dashboard-state.sh
+          if service_enabled postgres; then bash ./scripts/generate-pgadmin-config.sh; fi
+          if service_enabled cognito; then bash ./scripts/generate-cognito-config.sh; fi
+          compose config >/dev/null
+          echo "Docker Compose configuration is valid for profiles: ${COMPOSE_PROFILES:-<none>}"
 
       - name: Preflight candidate images
         run: |
           set -euo pipefail
+          # shellcheck source=scripts/common.sh
+          source ./scripts/common.sh
+          load_runtime_env
+          configure_service_selection
 
-          minio_release='RELEASE.2025-10-15T17-29-55Z'
-          minio_image="db-local/minio:$minio_release"
-          if ! docker image inspect "$minio_image" >/dev/null 2>&1; then
-            build_dir="$(mktemp -d)"
-            trap 'rm -rf "$build_dir"' EXIT
-            git clone --depth 1 --branch "$minio_release" https://github.com/minio/minio.git "$build_dir/minio"
-            docker run --rm -v "$build_dir/minio:/src" -w /src golang:1.24.13-bookworm sh -c 'git config --global --add safe.directory /src && make build'
-            sed -i 's|FROM minio/minio:latest|FROM quay.io/minio/minio:latest|' "$build_dir/minio/Dockerfile"
-            docker build --no-cache -t "$minio_image" "$build_dir/minio"
+          pull_services=(ui-gateway dashboard)
+          if service_enabled postgres; then pull_services+=(postgres pgadmin); fi
+          if service_enabled redis; then pull_services+=(redis redisinsight); fi
+          if service_enabled neo4j; then pull_services+=(neo4j); fi
+          if service_enabled elasticmq; then pull_services+=(elasticmq elasticmq-ui); fi
+          if service_enabled cognito; then pull_services+=(cognito cognito-ui); fi
+
+          if service_enabled minio; then
+            minio_release='RELEASE.2025-10-15T17-29-55Z'
+            minio_image="db-local/minio:$minio_release"
+            if ! docker image inspect "$minio_image" >/dev/null 2>&1; then
+              build_dir="$(mktemp -d)"
+              trap 'rm -rf "$build_dir"' EXIT
+              git clone --depth 1 --branch "$minio_release" https://github.com/minio/minio.git "$build_dir/minio"
+              docker run --rm -v "$build_dir/minio:/src" -w /src golang:1.24.13-bookworm sh -c 'git config --global --add safe.directory /src && make build'
+              sed -i 's|FROM minio/minio:latest|FROM quay.io/minio/minio:latest|' "$build_dir/minio/Dockerfile"
+              docker build --no-cache -t "$minio_image" "$build_dir/minio"
+            fi
+            echo "Pinned MinIO server image available: $minio_image"
+
+            if [[ "${RUN_MINIO_INIT:-true}" == "true" ]]; then
+              if ! docker image inspect quay.io/minio/mc:latest >/dev/null 2>&1; then
+                echo "::error::Required cached image is missing: quay.io/minio/mc:latest"
+                exit 1
+              fi
+              mc_release='RELEASE.2025-08-13T08-35-41Z'
+              if ! docker run --rm --entrypoint mc quay.io/minio/mc:latest --version 2>&1 | grep -Fq "mc version $mc_release"; then
+                echo "::error::Cached quay.io/minio/mc:latest does not match $mc_release"
+                exit 1
+              fi
+              docker tag quay.io/minio/mc:latest "quay.io/minio/mc:$mc_release"
+              echo "Verified and locally pinned MinIO client: $mc_release"
+            fi
+          else
+            echo "MinIO disabled; skipping MinIO image build and client preflight."
           fi
-          echo "Pinned MinIO server image available: $minio_image"
 
-          if ! docker image inspect quay.io/minio/mc:latest >/dev/null 2>&1; then
-            echo "::error::Required cached image is missing: quay.io/minio/mc:latest"
-            exit 1
-          fi
-
-          mc_release='RELEASE.2025-08-13T08-35-41Z'
-          if ! docker run --rm --entrypoint mc quay.io/minio/mc:latest --version 2>&1 | grep -Fq "mc version $mc_release"; then
-            echo "::error::Cached quay.io/minio/mc:latest does not match $mc_release"
-            exit 1
-          fi
-          docker tag quay.io/minio/mc:latest "quay.io/minio/mc:$mc_release"
-          echo "Verified and locally pinned MinIO client: $mc_release"
-
-          docker compose \
-            --env-file "$DEPLOY_ENV_FILE" \
-            pull --policy missing \
-            postgres pgadmin redis redisinsight neo4j elasticmq elasticmq-ui ui-gateway dashboard
-
-          echo "Candidate image preflight passed."
+          compose pull --policy missing "${pull_services[@]}"
+          echo "Candidate image preflight passed for enabled services."
 
       - name: Prepare rollback point
         id: prepare_rollback
@@ -213,8 +202,6 @@ jobs:
         if: ${{ success() }}
         run: |
           set -u
-
-          # Safe cleanup only. Never use --volumes for this DB stack.
           if ! docker image prune --force; then
             echo "::warning::The deployment succeeded, but dangling Docker image cleanup failed."
           fi
@@ -236,51 +223,29 @@ jobs:
         if: ${{ always() }}
         run: |
           set +e
-
           deploy_env_file="${DEPLOY_ENV_FILE:-$HOME/.config/db.local/runtime.env}"
           backup_root="${BACKUP_ROOT:-$HOME/backup_db.local}"
-
-          echo "Docker Compose status:"
-          docker compose \
-            --env-file "$deploy_env_file" \
-            ps
-
+          echo "Docker Compose status (all profiles):"
+          docker compose --env-file "$deploy_env_file" --profile '*' ps --all
           echo
           echo "Container healthcheck diagnostics:"
           for container_name in $(docker ps -a --filter "name=db-" --format '{{.Names}}'); do
             echo
             echo "----- $container_name -----"
-            docker inspect "$container_name" \
-              --format 'Status={{.State.Status}} ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}} Restarting={{.State.Restarting}} Health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
-              || true
-            docker inspect "$container_name" \
-              --format '{{if .State.Health}}{{range .State.Health.Log}}Exit={{.ExitCode}} Start={{.Start}} End={{.End}} Output={{printf "%q" .Output}}{{println}}{{end}}{{else}}No Docker healthcheck configured.{{end}}' \
-              || true
+            docker inspect "$container_name" --format 'Status={{.State.Status}} ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}} Restarting={{.State.Restarting}} Health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' || true
+            docker inspect "$container_name" --format '{{if .State.Health}}{{range .State.Health.Log}}Exit={{.ExitCode}} Start={{.Start}} End={{.End}} Output={{printf "%q" .Output}}{{println}}{{end}}{{else}}No Docker healthcheck configured.{{end}}' || true
           done
-
           echo
           echo "Host resource snapshot:"
           df -h "$HOME" || true
           free -h || true
           docker system df || true
-
           echo
-          echo "Recent Docker Compose logs:"
-          docker compose \
-            --env-file "$deploy_env_file" \
-            logs \
-            --no-color \
-            --tail="${DEPLOY_LOG_TAIL:-200}"
-
+          echo "Recent Docker Compose logs (all profiles):"
+          docker compose --env-file "$deploy_env_file" --profile '*' logs --no-color --tail="${DEPLOY_LOG_TAIL:-200}"
           echo
           echo "Backup directories:"
-          find "$backup_root" \
-            -mindepth 1 \
-            -maxdepth 1 \
-            -type d \
-            -printf '%f\n' \
-            2>/dev/null |
-            sort
+          find "$backup_root" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort
 
       - name: Write deployment summary
         if: ${{ always() }}
@@ -290,14 +255,13 @@ jobs:
           ROLLBACK_STEP_OUTCOME: ${{ steps.rollback.outcome }}
         run: |
           set -euo pipefail
-
           backup_root="${BACKUP_ROOT:-$HOME/backup_db.local}"
-
           {
             echo "## DB deployment"
             echo
             echo "- Commit: \`$GITHUB_SHA\`"
             echo "- Workflow result: **$FINAL_JOB_STATUS**"
+            echo "- Platform hostname: \`aws.home.arpa\`"
             echo "- Rollback point preparation: **${PREPARE_ROLLBACK_OUTCOME:-not run}**"
             echo "- Rollback step: **${ROLLBACK_STEP_OUTCOME:-not run}**"
             echo "- Rollback detail: **${ROLLBACK_RESULT:-not required}**"
@@ -305,13 +269,12 @@ jobs:
             echo "- Actions root: \`${ACTIONS_ROOT:-$HOME/actions_db.local}\`"
             echo "- Backup root: \`$backup_root\`"
             echo
-
             if [[ "$FINAL_JOB_STATUS" == "success" ]]; then
-              echo "The candidate DB stack passed Compose health checks and smoke tests."
+              echo "The candidate stack passed Compose health checks and enabled/disabled service smoke tests."
               echo
               echo "The previous deployment backup was replaced with the new successful-deployment backup."
               echo
-              echo "Docker volumes were preserved."
+              echo "Docker data volumes were preserved, including volumes for disabled services."
             else
               echo "The workflow remains failed so GitHub displays a red failure status."
               echo

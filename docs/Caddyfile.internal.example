@@ -1,18 +1,18 @@
-# Host Caddy only needs to proxy the dashboard on the default HTTPS port.
-# The five admin consoles are served by the Compose ui-gateway on their
-# documented HTTPS ports, all under the single dbs.home.arpa hostname.
+# System-level Caddy route for the dashboard. The Compose ui-gateway serves the
+# browser/admin consoles on their own HTTPS ports under the same hostname.
 #
-# Dashboard:    https://dbs.home.arpa
-# pgAdmin:      https://dbs.home.arpa:5050
-# RedisInsight: https://dbs.home.arpa:5540
-# Neo4j:        https://dbs.home.arpa:7474
-# MinIO:        https://dbs.home.arpa:9001
-# ElasticMQ UI: https://dbs.home.arpa:9325
+# Dashboard:    https://aws.home.arpa
+# pgAdmin:      https://aws.home.arpa:5050
+# RedisInsight: https://aws.home.arpa:5540
+# Neo4j:        https://aws.home.arpa:7474
+# MinIO:        https://aws.home.arpa:9001
+# ElasticMQ UI: https://aws.home.arpa:9325
+# Cognito UI:    https://aws.home.arpa:9230
 #
-# Port 9324 remains the raw SQS-compatible ElasticMQ API and is intentionally
-# not used by the browser UI.
+# Raw APIs remain direct LAN services: PostgreSQL 5432, Redis 6379, Neo4j Bolt
+# 7687, MinIO 9000, ElasticMQ 9324, and Cognito Local API 9229. The Cognito UI is a separate HTTPS page on 9230.
 
-dbs.home.arpa {
+aws.home.arpa {
     tls internal
     reverse_proxy 127.0.0.1:8003
 }

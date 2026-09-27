@@ -1,57 +1,143 @@
-# db.local
+# cloud_services.local
 
-Local Docker database/storage/messaging stack for a LangGraph/FastAPI/LLM app, with GitHub Actions deployment and automatic rollback support.
+Local AWS-compatible data/authentication platform for LangGraph, FastAPI, and LLM application development. The stack is deployed with Docker Compose, a persistent runtime environment, GitHub Actions, health/smoke validation, and automatic source/config rollback.
 
-This repo provides the local DB/storage layer for the home server.
+Canonical LAN hostname:
 
-## Included
+```text
+aws.home.arpa
+```
 
-Long-running containers in this stack:
+## Logical services
 
-1. `db-postgres` - PostgreSQL 17 + pgvector
-2. `db-pgadmin` - pgAdmin PostgreSQL admin UI
-3. `db-redis` - Redis
-4. `db-redisinsight` - RedisInsight Redis admin UI
-5. `db-neo4j` - Neo4j Community + Neo4j Browser
-6. `db-minio` - MinIO S3-compatible object storage + console
-7. `db-elasticmq` - ElasticMQ SQS-compatible local message queue
-8. `db-elasticmq-ui` - official ElasticMQ web UI for queues and messages
-9. `db-dashboard` - tiny BusyBox static HTML launcher page
+Six logical services can be enabled or disabled independently from the persistent runtime environment:
 
-Temporary one-shot container:
+| Logical service | Containers | Local AWS target |
+|---|---|---|
+| PostgreSQL + pgvector | `db-postgres`, `db-pgadmin` | Aurora / RDS PostgreSQL |
+| Redis | `db-redis`, `db-redisinsight` | ElastiCache |
+| Neo4j | `db-neo4j` | Neptune / Neo4j Aura |
+| MinIO | `db-minio`, temporary `db-minio-init` | S3 |
+| ElasticMQ | `db-elasticmq`, `db-elasticmq-ui` | SQS |
+| Cognito Local | `db-cognito`, `db-cognito-ui` | Cognito User Pools |
 
-- `db-minio-init` - creates the default MinIO bucket, then exits
+Platform infrastructure is always enabled:
 
-PostgreSQL and Redis do not include full web admin panels inside their own DB containers, so this project adds `pgAdmin` and `RedisInsight`. ElasticMQ uses SoftwareMill's official `elasticmq-ui` image.
+- `db-ui-gateway` — Caddy HTTPS gateway for browser/admin UIs.
+- `db-dashboard` — Nginx static dashboard served locally on `127.0.0.1:8003` and normally published through host Caddy.
 
-`db-minio-init` is intentionally not long-running. It runs after MinIO is healthy, creates the configured bucket, exits with code `0`, and is removed.
+## Service switches
+
+All six logical services are enabled by default:
+
+```env
+ENABLE_POSTGRES=true
+ENABLE_REDIS=true
+ENABLE_NEO4J=true
+ENABLE_MINIO=true
+ENABLE_ELASTICMQ=true
+ENABLE_COGNITO=true
+```
+
+Values must be exactly `true` or `false`. Invalid values fail deployment.
+
+Disabling a logical service removes its application/admin containers but **does not remove named Docker volumes**. Re-enabling the service later reuses the same persistent data. The dashboard continues to show every service and marks disabled services as `DISABLED`; their admin links are non-clickable.
+
+Docker Compose profiles are derived automatically from these six variables. Users should configure the `ENABLE_*` variables rather than setting `COMPOSE_PROFILES` manually.
+
+## Runtime environment
+
+Production-style deployment uses:
+
+```text
+$HOME/.config/db.local/runtime.env
+```
+
+The workflow creates this file from `.env.example` on first deployment and then preserves server-specific values. New keys are added automatically without replacing existing values, except deployment-critical values intentionally forced by the release workflow.
+
+The canonical hostname is forced to:
+
+```env
+PLATFORM_HOSTNAME=aws.home.arpa
+```
+
+## Endpoints
+
+With all logical services enabled:
+
+| Service | Endpoint |
+|---|---|
+| Dashboard | `https://aws.home.arpa` |
+| PostgreSQL | `aws.home.arpa:5432` |
+| pgAdmin | `https://aws.home.arpa:5050` |
+| Redis | `redis://aws.home.arpa:6379/0` |
+| RedisInsight | `https://aws.home.arpa:5540` |
+| Neo4j Browser | `https://aws.home.arpa:7474` |
+| Neo4j Bolt | `bolt://aws.home.arpa:7687` |
+| MinIO S3 API | `http://aws.home.arpa:9000` |
+| MinIO Console | `https://aws.home.arpa:9001` |
+| ElasticMQ SQS API | `http://aws.home.arpa:9324` |
+| ElasticMQ UI | `https://aws.home.arpa:9325` |
+| Cognito Local User Pools API | `http://aws.home.arpa:9229` |
+| Cognito Local management UI | `https://aws.home.arpa:9230` |
+
+Containers on `db-local-net` should use Compose service names (`postgres`, `redis`, `neo4j`, `minio`, `elasticmq`, `cognito`) rather than hairpinning through the host.
+
+## Dashboard hostname and host Caddy
+
+The dashboard container remains host-local:
+
+```env
+DASHBOARD_HOST_BIND=127.0.0.1
+DASHBOARD_PORT=8003
+```
+
+The system-level Caddy installation on the server should contain:
+
+```caddyfile
+aws.home.arpa {
+    tls internal
+    reverse_proxy 127.0.0.1:8003
+}
+```
+
+This host Caddy configuration is outside the repository and must be kept consistent with `PLATFORM_HOSTNAME`. LAN DNS must resolve `aws.home.arpa` to the server.
+
+The Compose `db-ui-gateway` independently publishes the browser/admin UIs with Caddy `tls internal` on ports `5050`, `5540`, `7474`, `9001`, `9325`, and `9230` under the same `aws.home.arpa` hostname.
+
+## Cognito Local
+
+The stack uses the pinned image:
+
+```text
+jagregory/cognito-local:5.3.0
+```
+
+Cognito Local is a development emulator for **Amazon Cognito User Pools**, not a complete Cognito/Identity Pools implementation. The API remains a direct local service at `http://aws.home.arpa:9229`; a normal browser `GET /` is not an admin page because Cognito Local exposes an AWS-compatible JSON API. A separate `db-cognito-ui` companion provides a functional management console over internal TLS at `https://aws.home.arpa:9230`. The console has its own small server-side management API and calls `db-cognito` over the private Compose network; it does not expose or proxy the raw Cognito API through port `9230`.
+
+Persistent state is stored in:
+
+```text
+db-cognito-data
+```
+
+Deployment generates Cognito Local configuration and synchronizes it into the preserved external named volume before startup; Cognito can then update its own writable config while user-pool data remains persistent. The configured token issuer is:
+
+```text
+http://aws.home.arpa:9229
+```
+
+The management console supports:
+
+- list/create/delete User Pools
+- list/create/delete users
+- set a user's permanent password
+
+The smoke test calls the User Pools `ListUserPools` API, verifies the HTTPS console backend can list pools, and validates the UI/API containers independently.
 
 ## Deployment model
 
-This repo follows the successful-deployment backup and rollback pattern used by the app/MCP strategy repos, adjusted safely for a DB stack.
-
-Important difference: this repo has persistent database volumes and mostly third-party images. Deployment rollback restores the last successful Compose source and runtime environment. It never deletes database volumes.
-
-Server folders expected for the current server:
-
-```text
-/home/abrar/actions_db.local
-/home/abrar/backup_db.local
-```
-
-Runtime environment file used by GitHub Actions:
-
-```text
-/home/abrar/.config/db.local/runtime.env
-```
-
-The workflow creates that runtime environment file from `.env.example` on first deployment and preserves it afterward.
-
-Some deployment-critical values are forced by the workflow on every deploy so stale runtime values do not keep old port bindings.
-
-## GitHub Actions deployment
-
-Workflow file:
+Release workflow:
 
 ```text
 .github/workflows/deploy-release.yml
@@ -60,587 +146,125 @@ Workflow file:
 Trigger:
 
 ```text
-push to release branch
+push to release
 ```
 
-Expected self-hosted runner labels:
+Runner labels:
 
 ```text
 self-hosted, Linux, X64, dbs-prod
 ```
 
-Recommended server-side runner folder:
-
-```text
-/home/abrar/actions_db.local
-```
-
-Recommended backup folder:
-
-```text
-/home/abrar/backup_db.local
-```
-
-The deployment flow is:
+Deployment sequence:
 
 ```text
 checkout release commit
-validate scripts and server prerequisites
+validate shell/server prerequisites
 create/preserve runtime.env
-force deployment-critical network values in runtime.env
-generate pgAdmin servers.json
-validate docker compose config
+migrate new runtime keys
+validate booleans/hostname/credentials
+derive enabled Compose profiles
+generate dashboard state + service config files
+validate Compose configuration
+preflight only enabled service images
 prepare rollback point
-start candidate stack with health checks
-run smoke test
-replace successful deployment backup
-on failure, restore last successful Compose source and runtime env
+remove newly-disabled containers (volumes preserved)
+start enabled services
+run MinIO init only when MinIO is enabled
+run enabled/disabled smoke verification
+replace successful-deployment snapshot
+rollback source/config on failure
 ```
 
-The backup folder keeps exactly one successful deployment backup, matching the strategy repo. This backup is a compact source/config snapshot, not a database-data backup.
+Rollback restores the previous source tree and previous `runtime.env`. It never deletes Docker data volumes.
 
-Docker volumes are preserved during deploy and rollback.
+## Dashboard state generation
 
-## Quick start manually on the server
+`scripts/generate-dashboard-state.sh` regenerates the non-secret `www/runtime-config.js` file from `runtime.env`. Nginx continues to mount the stable tracked `www/` directory read-only, matching the pre-feature dashboard deployment model while still reflecting enabled/disabled service state.
+
+The generated state contains only:
+
+- `PLATFORM_HOSTNAME`
+- six enabled/disabled booleans
+- service port numbers
+
+Credentials are never exposed to the browser.
+
+## Manual deployment
 
 ```bash
-mkdir -p ~/db.local
-cd ~/db.local
-
-# copy this project here, then:
 cp .env.example .env
 nano .env
-
 chmod +x scripts/*.sh
 ./scripts/start.sh --wait
 ./scripts/status.sh
 ./scripts/verify.sh
 ```
 
-Or use the same local deploy wrapper as GitHub Actions:
+Or use the deployment wrapper:
 
 ```bash
 DEPLOY_ENV_FILE="$HOME/.config/db.local/runtime.env" ./scripts/deploy-local.sh
 ```
 
-## `.env` controls repeated names, paths, ports, and credentials
-
-The `.env.example` file controls:
-
-- server deployment folders: `ACTIONS_ROOT`, `BACKUP_ROOT`, `DEPLOY_ENV_FILE`
-- generated/config folders: `GENERATED_DIR`, `PGADMIN_SERVERS_JSON`, `DASHBOARD_WWW_DIR`, `POSTGRES_BACKUP_DIR`
-- Compose project/network names
-- container names
-- Docker volume names
-- host bind addresses
-- service ports
-- default usernames/passwords
-- MinIO default bucket
-- ElasticMQ API/UI ports and persistent storage volume
-
-This keeps repeated values consistent across Compose, scripts, and GitHub Actions.
-
-## Desired network model
-
-This repo uses two exposure patterns:
-
-1. Browser/admin UIs through host Caddy with private `tls internal` HTTPS
-2. Raw application protocols directly on LAN ports where required
-
-## Dashboard access model
-
-The dashboard should be exposed only through host Caddy:
-
-```text
-https://dbs.home.arpa
-        |
-        v
-host Caddy
-        |
-        v
-127.0.0.1:8003
-        |
-        v
-db-dashboard BusyBox container
-```
-
-Runtime values:
-
-```env
-DASHBOARD_HOST_BIND=127.0.0.1
-DASHBOARD_PORT=8003
-```
-
-Expected Docker mapping:
-
-```text
-127.0.0.1:8003->8080/tcp
-```
-
-or:
-
-```text
-127.0.0.1:8003->8003/tcp
-```
-
-Both are acceptable. The important part is the host-side binding:
-
-```text
-127.0.0.1:8003
-```
-
-That means the dashboard is not directly exposed to LAN on `:8003`. It is reachable through Caddy:
-
-```text
-https://dbs.home.arpa
-```
-
-## DB/admin service access model
-
-Browser/admin UIs are localhost-only and accessed through Caddy HTTPS. Raw database/application protocols such as PostgreSQL, Redis, Neo4j Bolt, MinIO S3 API, and ElasticMQ SQS API remain direct LAN services.
-
-Runtime value:
-
-```env
-DB_HOST_BIND=0.0.0.0
-ADMIN_UI_HOST_BIND=127.0.0.1
-```
-
-`DB_HOST_BIND` publishes required raw application ports on LAN interfaces. `ADMIN_UI_HOST_BIND` keeps browser/admin ports on localhost so Caddy is their only network entry point.
-
-Do not port-forward these DB/admin ports from the router to the internet.
-
-Expected DB/admin ports:
-
-| Service | Port | Access pattern |
-|---|---:|---|
-| pgAdmin | `5050` | Direct HTTP from LAN |
-| PostgreSQL + pgvector | `5432` | Direct PostgreSQL client from LAN |
-| RedisInsight | `5540` | Direct HTTP from LAN |
-| Redis | `6379` | Direct Redis client from LAN |
-| Neo4j Browser | `7474` | Direct HTTP from LAN |
-| Neo4j Bolt | `7687` | Direct Bolt client from LAN |
-| MinIO S3 API | `9000` | Direct S3-compatible client from LAN |
-| MinIO Console | `9001` | Direct HTTP from LAN |
-| ElasticMQ SQS API | `9324` | Direct SQS-compatible HTTP API from LAN |
-| ElasticMQ UI | `9325` | Direct HTTP from LAN |
-
-## Expected Docker port bindings
-
-After deployment:
+Stop all stack containers while preserving data:
 
 ```bash
-docker ps --format "table {{.Names}}\t{{.Ports}}" | grep db-
+./scripts/stop.sh
 ```
 
-Expected DB/admin service mappings:
-
-```text
-db-pgadmin        443/tcp, 127.0.0.1:5050->80/tcp
-db-postgres       0.0.0.0:5432->5432/tcp
-db-redis          0.0.0.0:6379->6379/tcp
-db-redisinsight   127.0.0.1:5540->5540/tcp
-db-neo4j          127.0.0.1:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
-db-minio          0.0.0.0:9000->9000/tcp, 127.0.0.1:9001->9001/tcp
-db-elasticmq      0.0.0.0:9324->9324/tcp
-db-elasticmq-ui   127.0.0.1:9325->3000/tcp
-```
-
-Expected dashboard mapping:
-
-```text
-db-dashboard      127.0.0.1:8003->8080/tcp
-```
-
-or:
-
-```text
-db-dashboard      127.0.0.1:8003->8003/tcp
-```
-
-Both dashboard mappings are acceptable.
-
-## Recommended Caddy route for dbs.home.arpa
-
-Keep the dashboard bound to localhost:
-
-```env
-DASHBOARD_HOST_BIND=127.0.0.1
-DASHBOARD_PORT=8003
-```
-
-Add this to `/etc/caddy/Caddyfile`:
-
-```caddyfile
-dbs.home.arpa {
-    tls internal
-    reverse_proxy 127.0.0.1:8003
-}
-```
-
-Then validate and reload Caddy:
+A full destructive reset requires interactive confirmation:
 
 ```bash
-sudo caddy fmt --overwrite /etc/caddy/Caddyfile
-sudo caddy validate --config /etc/caddy/Caddyfile
-sudo systemctl reload caddy
-sudo systemctl status caddy --no-pager -l
+./scripts/reset-all-data.sh
 ```
 
-Test from the server:
+That command removes volumes for enabled **and disabled** services and must never be used by the deployment workflow.
+
+## Backups
+
+Deployment snapshots are source/config metadata used for rollback. They are not database backups.
+
+Data backup commands:
 
 ```bash
-curl -kI --resolve dbs.home.arpa:443:127.0.0.1 https://dbs.home.arpa
+./scripts/backup-postgres.sh
+./scripts/test-postgres-restore.sh
+./scripts/backup-redis.sh
+./scripts/backup-neo4j.sh
+./scripts/backup-minio.sh
 ```
 
-Expected:
+A service-specific backup command exits cleanly when that logical service is disabled.
 
-```text
-HTTP/2 200
-```
+Backups stored only on the same physical disk do not protect against disk failure.
 
-Open:
+## Application connection examples
 
-```text
-https://dbs.home.arpa
-```
-
-The dashboard links should point to the admin panels by hostname and port, for example:
-
-```text
-https://pgadmin.dbs.home.arpa
-https://redis.dbs.home.arpa
-https://neo4j.dbs.home.arpa
-https://minio.dbs.home.arpa
-https://sqs.dbs.home.arpa
-```
-
-## Default endpoints
-
-| Service | Endpoint |
-|---|---|
-| Static dashboard through Caddy | `https://dbs.home.arpa` |
-| Static dashboard direct local only | `http://127.0.0.1:8003` |
-| PostgreSQL | `dbs.home.arpa:5432` |
-| pgAdmin | `https://pgadmin.dbs.home.arpa` |
-| Redis | `dbs.home.arpa:6379` |
-| RedisInsight | `https://redis.dbs.home.arpa` |
-| Neo4j Browser | `https://neo4j.dbs.home.arpa` |
-| Neo4j Bolt | `bolt://dbs.home.arpa:7687` |
-| MinIO S3 API | `http://dbs.home.arpa:9000` |
-| MinIO Console | `https://minio.dbs.home.arpa` |
-| ElasticMQ SQS API | `http://dbs.home.arpa:9324` |
-| ElasticMQ UI | `https://sqs.dbs.home.arpa` |
-
-If DNS is not configured yet, use the server IP:
-
-```text
-192.168.1.126
-```
-
-Example:
-
-```text
-http://192.168.1.126:5050
-```
-
-## Default credentials
-
-| Service | Username | Password |
-|---|---|---|
-| PostgreSQL | `langgraph_user` | `change_me_postgres_2026` |
-| pgAdmin | `admin@local.dev` | `change_me_pgadmin_2026` |
-| Redis | default user | `change_me_redis_2026` |
-| RedisInsight | no app login by default | Redis connection is preconfigured |
-| Neo4j | `neo4j` | `change_me_neo4j_2026` |
-| MinIO | `minioadmin` | `change_me_minio_2026` |
-| ElasticMQ / UI | no authentication | no password |
-
-Change passwords in the runtime environment before serious use.
-
-Important: PostgreSQL and Neo4j initialize credentials when their persistent volumes are first created. If credentials are changed after first startup, the old DB credentials may still remain in the existing volumes.
-
-## Runtime environment
-
-Main server runtime file:
-
-```text
-/home/abrar/.config/db.local/runtime.env
-```
-
-Important network values:
-
-```env
-DB_HOST_BIND=0.0.0.0
-DASHBOARD_HOST_BIND=127.0.0.1
-DASHBOARD_PORT=8003
-```
-
-`DB_HOST_BIND=0.0.0.0` publishes DB/admin ports on all host interfaces.
-
-`DASHBOARD_HOST_BIND=127.0.0.1` keeps the dashboard private to the server so it is only reachable through Caddy.
-
-The GitHub Actions workflow should force these values on every deployment:
-
-```bash
-set_runtime_env_value DB_HOST_BIND '0.0.0.0' "$DEPLOY_ENV_FILE"
-set_runtime_env_value DASHBOARD_HOST_BIND '127.0.0.1' "$DEPLOY_ENV_FILE"
-set_runtime_env_value DASHBOARD_PORT '8003' "$DEPLOY_ENV_FILE"
-```
-
-This prevents old persistent runtime values from keeping stale port bindings.
-
-## LAN access through dbs.home.arpa
-
-DB/admin services are intended to be reachable directly from the LAN:
-
-| Service | Endpoint |
-|---|---|
-| Static dashboard through Caddy | `https://dbs.home.arpa` |
-| PostgreSQL | `dbs.home.arpa:5432` |
-| pgAdmin | `https://pgadmin.dbs.home.arpa` |
-| Redis | `dbs.home.arpa:6379` |
-| RedisInsight | `https://redis.dbs.home.arpa` |
-| Neo4j Browser | `https://neo4j.dbs.home.arpa` |
-| Neo4j Bolt | `bolt://dbs.home.arpa:7687` |
-| MinIO S3 API | `http://dbs.home.arpa:9000` |
-| MinIO Console | `https://minio.dbs.home.arpa` |
-| ElasticMQ SQS API | `http://dbs.home.arpa:9324` |
-| ElasticMQ UI | `https://sqs.dbs.home.arpa` |
-
-Do not port-forward these DB/admin ports from your router to the internet.
-
-## Firewall example
-
-Example LAN subnet:
-
-```text
-192.168.1.0/24
-```
-
-Recommended UFW rules with comments:
-
-```bash
-sudo ufw allow from 192.168.1.0/24 to any port 22 proto tcp comment 'LAN SSH only'
-
-sudo ufw allow from 192.168.1.0/24 to any port 5432 proto tcp comment 'db.local PostgreSQL pgvector - LAN only'
-
-sudo ufw allow from 192.168.1.0/24 to any port 6379 proto tcp comment 'db.local Redis - LAN only'
-
-sudo ufw allow from 192.168.1.0/24 to any port 7687 proto tcp comment 'db.local Neo4j Bolt - LAN only'
-
-sudo ufw allow from 192.168.1.0/24 to any port 9000 proto tcp comment 'db.local MinIO S3 API - LAN only'
-
-sudo ufw allow from 192.168.1.0/24 to any port 9324 proto tcp comment 'db.local ElasticMQ SQS API - LAN only'
-```
-
-For Caddy, choose one policy.
-
-LAN-only Caddy:
-
-```bash
-sudo ufw allow from 192.168.1.0/24 to any port 80 proto tcp comment 'Caddy HTTP - LAN only'
-sudo ufw allow from 192.168.1.0/24 to any port 443 proto tcp comment 'Caddy HTTPS - LAN only'
-```
-
-Public Caddy:
-
-```bash
-sudo ufw allow 80/tcp comment 'Caddy HTTP redirect'
-sudo ufw allow 443/tcp comment 'Caddy HTTPS'
-```
-
-For `*.home.arpa`, LAN-only Caddy is usually cleaner.
-
-## Important Docker and UFW note
-
-Docker-published ports can bypass normal UFW input rules on some Linux setups because Docker programs iptables directly.
-
-Because this repo uses:
-
-```env
-DB_HOST_BIND=0.0.0.0
-```
-
-the firewall policy is important.
-
-For normal home/LAN use, the UFW rules above may be enough. For stricter firewall-only access control, add `DOCKER-USER` chain rules to enforce LAN-only access for Docker-published DB/admin ports.
-
-The DB/admin ports that need firewall control are:
-
-```text
-5050, 5432, 5540, 6379, 7474, 7687, 9000, 9001, 9324, 9325
-```
-
-The dashboard port `8003` should not be exposed directly because it is bound to `127.0.0.1`.
-
-## Test from the server
-
-Test dashboard directly:
-
-```bash
-curl -I http://127.0.0.1:8003
-```
-
-Test dashboard through Caddy:
-
-```bash
-curl -kI --resolve dbs.home.arpa:443:127.0.0.1 https://dbs.home.arpa
-```
-
-Check Docker bindings:
-
-```bash
-docker ps --format "table {{.Names}}\t{{.Ports}}" | grep db-
-```
-
-Expected DB/admin service bindings should show `0.0.0.0`.
-
-Expected dashboard binding should show `127.0.0.1:8003`.
-
-## Test from Windows
-
-PowerShell:
-
-```powershell
-Resolve-DnsName dbs.home.arpa
-
-curl.exe -kI https://dbs.home.arpa
-
-Test-NetConnection dbs.home.arpa -Port 5050
-Test-NetConnection dbs.home.arpa -Port 5432
-Test-NetConnection dbs.home.arpa -Port 5540
-Test-NetConnection dbs.home.arpa -Port 6379
-Test-NetConnection dbs.home.arpa -Port 7474
-Test-NetConnection dbs.home.arpa -Port 7687
-Test-NetConnection dbs.home.arpa -Port 9000
-Test-NetConnection dbs.home.arpa -Port 9001
-Test-NetConnection dbs.home.arpa -Port 9324
-Test-NetConnection dbs.home.arpa -Port 9325
-```
-
-Expected:
-
-```text
-TcpTestSucceeded : True
-```
-
-Direct dashboard test from Windows should normally fail:
-
-```powershell
-Test-NetConnection dbs.home.arpa -Port 8003
-```
-
-That is expected if the dashboard is correctly bound only to `127.0.0.1` and exposed only through Caddy.
-
-## App connection strings
-
-Same server:
+Same host:
 
 ```env
 DATABASE_URL=postgresql+asyncpg://langgraph_user:change_me_postgres_2026@127.0.0.1:5432/langgraph_app
 REDIS_URL=redis://:change_me_redis_2026@127.0.0.1:6379/0
 NEO4J_URI=bolt://127.0.0.1:7687
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=change_me_neo4j_2026
 S3_ENDPOINT_URL=http://127.0.0.1:9000
-S3_ACCESS_KEY=minioadmin
-S3_SECRET_KEY=change_me_minio_2026
-S3_BUCKET=langgraph-app
 SQS_ENDPOINT_URL=http://127.0.0.1:9324
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=test
-AWS_SECRET_ACCESS_KEY=test
+COGNITO_ENDPOINT_URL=http://127.0.0.1:9229
 ```
 
 LAN:
 
 ```env
-DATABASE_URL=postgresql+asyncpg://langgraph_user:change_me_postgres_2026@dbs.home.arpa:5432/langgraph_app
-REDIS_URL=redis://:change_me_redis_2026@dbs.home.arpa:6379/0
-NEO4J_URI=bolt://dbs.home.arpa:7687
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=change_me_neo4j_2026
-S3_ENDPOINT_URL=http://dbs.home.arpa:9000
-S3_ACCESS_KEY=minioadmin
-S3_SECRET_KEY=change_me_minio_2026
-S3_BUCKET=langgraph-app
-SQS_ENDPOINT_URL=http://dbs.home.arpa:9324
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=test
-AWS_SECRET_ACCESS_KEY=test
+DATABASE_URL=postgresql+asyncpg://langgraph_user:change_me_postgres_2026@aws.home.arpa:5432/langgraph_app
+REDIS_URL=redis://:change_me_redis_2026@aws.home.arpa:6379/0
+NEO4J_URI=bolt://aws.home.arpa:7687
+S3_ENDPOINT_URL=http://aws.home.arpa:9000
+SQS_ENDPOINT_URL=http://aws.home.arpa:9324
+COGNITO_ENDPOINT_URL=http://aws.home.arpa:9229
 ```
 
-## Important password/volume note
+## Security and resource model
 
-PostgreSQL and Neo4j initialize credentials when their persistent volumes are first created. If you change `.env` after first startup, the old DB credentials may still remain in the existing volumes.
+Raw service APIs are LAN-bound through `DB_HOST_BIND` and should not be router-port-forwarded to the internet. Browser/admin UIs are served through the Compose HTTPS gateway. The main dashboard stays on loopback and is published by host Caddy.
 
-For a clean reset during testing:
-
-```bash
-./scripts/reset-all-data.sh
-```
-
-This deletes all stack volumes and should never be used by GitHub Actions.
-
-## PostgreSQL logical backup
-
-```bash
-./scripts/backup-postgres.sh
-```
-
-By default this writes to:
-
-```text
-./backups/postgres
-```
-
-You can change that with:
-
-```env
-POSTGRES_BACKUP_DIR=./backups/postgres
-```
-
-## Full reset during testing
-
-Use only when you intentionally want to delete all DB stack data:
-
-```bash
-./scripts/reset-all-data.sh
-```
-
-This deletes Docker volumes for the DB stack.
-
-Never call this from GitHub Actions.
-
-## Hardware note
-
-This stack is appropriate for a Core i5-6400T, 16 GB RAM, and SSD for lightweight home-server use. Neo4j is the largest idle memory user in this stack; its heap/page-cache defaults are intentionally modest in `.env.example`.
-
-
-## ElasticMQ / Amazon SQS development model
-
-ElasticMQ provides the local SQS-compatible endpoint:
-
-```text
-http://dbs.home.arpa:9324
-```
-
-The official ElasticMQ UI is available at:
-
-```text
-https://sqs.dbs.home.arpa
-```
-
-Containers on the shared `db-local-net` network should use `http://elasticmq:9324` instead of routing through the host. The local stack persists ElasticMQ message storage in the `db-elasticmq-data` Docker volume.
-
-For local AWS SDK clients, use dummy credentials such as `test` and set the SQS endpoint override to ElasticMQ. In AWS production, remove the endpoint override so the SDK uses Amazon SQS normally.
-
-
-## Hardening profile
-
-The hardened deployment keeps raw application protocols on LAN ports while binding all browser/admin UIs to localhost and publishing them through host Caddy with private `tls internal` HTTPS. See `docs/Caddyfile.internal.example` and `docs/OPERATIONS.md`.
-
-Deployment requires at least 5 GiB free disk, rotates Docker logs, applies conservative CPU/memory/PID limits, validates all services, refuses placeholder passwords, and keeps exactly one successful deployment rollback snapshot. Database volumes are preserved across deployments. Explicit data-backup scripts use count-based retention.
-
-Runtime images are pinned to reviewed stable/LTS versions instead of floating `:latest` tags. Update versions deliberately through a reviewed change.
+Containers use `no-new-privileges`, PID limits, CPU/memory ceilings, and Docker log rotation. Resource limits are ceilings, not reservations. See `.env.example`, `docs/LAN_ACCESS.md`, and `docs/RESOURCE_PLANNING.md`.

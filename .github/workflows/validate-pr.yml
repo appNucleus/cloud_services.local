@@ -1,0 +1,193 @@
+name: Validate configurable stack
+
+on:
+  pull_request:
+    branches:
+      - release
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate Compose profiles and Cognito persistence
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Prepare isolated runtime environment
+        run: |
+          set -euo pipefail
+          cp .env.example .env.validation
+          env_file="$GITHUB_WORKSPACE/.env.validation"
+          set_value() {
+            local key="$1" value="$2"
+            if grep -qE "^${key}=" "$env_file"; then
+              sed -i "s|^${key}=.*|${key}=${value}|" "$env_file"
+            else
+              printf '\n%s=%s\n' "$key" "$value" >> "$env_file"
+            fi
+          }
+          set_value DEPLOY_ENV_FILE "$env_file"
+          set_value ACTIONS_ROOT "$RUNNER_TEMP/actions"
+          set_value BACKUP_ROOT "$RUNNER_TEMP/backups"
+          set_value ROLLBACK_STATE_DIR "$RUNNER_TEMP/rollback"
+          set_value DB_HOST_BIND '127.0.0.1'
+          set_value UI_GATEWAY_HOST_BIND '127.0.0.1'
+          set_value ADMIN_UI_HOST_BIND '127.0.0.1'
+          set_value DASHBOARD_HOST_BIND '127.0.0.1'
+          set_value PLATFORM_HOSTNAME 'aws.home.arpa'
+          set_value VERIFY_HOST_CADDY 'false'
+          set_value ENABLE_POSTGRES 'false'
+          set_value ENABLE_REDIS 'false'
+          set_value ENABLE_NEO4J 'false'
+          set_value ENABLE_MINIO 'false'
+          set_value ENABLE_ELASTICMQ 'false'
+          set_value ENABLE_COGNITO 'true'
+          echo "DEPLOY_ENV_FILE=$env_file" >> "$GITHUB_ENV"
+
+      - name: Validate shell and YAML-facing configuration
+        run: |
+          set -euo pipefail
+          for script in scripts/*.sh; do bash -n "$script"; done
+          bash ./scripts/validate-runtime-env.sh
+          bash ./scripts/generate-dashboard-state.sh
+          bash ./scripts/generate-cognito-config.sh
+          docker compose --env-file "$DEPLOY_ENV_FILE" --profile '*' config >/dev/null
+
+      - name: Validate all 64 service switch combinations
+        run: |
+          set -euo pipefail
+          services=(postgres redis neo4j minio elasticmq cognito)
+          keys=(ENABLE_POSTGRES ENABLE_REDIS ENABLE_NEO4J ENABLE_MINIO ENABLE_ELASTICMQ ENABLE_COGNITO)
+          for mask in $(seq 0 63); do
+            env_file="$RUNNER_TEMP/combo-$mask.env"
+            cp "$DEPLOY_ENV_FILE" "$env_file"
+            profiles=()
+            expected=(ui-gateway dashboard)
+            for i in "${!services[@]}"; do
+              value=false
+              if (( mask & (1 << i) )); then
+                value=true
+                profiles+=("${services[$i]}")
+                case "${services[$i]}" in
+                  postgres) expected+=(postgres pgadmin) ;;
+                  redis) expected+=(redis redisinsight) ;;
+                  neo4j) expected+=(neo4j) ;;
+                  minio) expected+=(minio minio-init) ;;
+                  elasticmq) expected+=(elasticmq elasticmq-ui) ;;
+                  cognito) expected+=(cognito cognito-ui) ;;
+                esac
+              fi
+              sed -i "s|^${keys[$i]}=.*|${keys[$i]}=${value}|" "$env_file"
+            done
+            joined=""
+            if (( ${#profiles[@]} > 0 )); then
+              joined="$(IFS=,; echo "${profiles[*]}")"
+            fi
+            mapfile -t actual < <(COMPOSE_PROFILES="$joined" docker compose --env-file "$env_file" config --services | sort)
+            mapfile -t wanted < <(printf '%s\n' "${expected[@]}" | sort)
+            if [[ "${actual[*]}" != "${wanted[*]}" ]]; then
+              echo "Service selection mismatch for mask $mask" >&2
+              printf 'Expected: %s\n' "${wanted[*]}" >&2
+              printf 'Actual:   %s\n' "${actual[*]}" >&2
+              exit 1
+            fi
+          done
+          echo "All 64 enable/disable combinations resolved correctly."
+
+      - name: Exercise Cognito enable-disable-reenable persistence
+        run: |
+          set -euo pipefail
+          cleanup() {
+            docker compose --env-file "$DEPLOY_ENV_FILE" --profile '*' down -v --remove-orphans >/dev/null 2>&1 || true
+            docker volume rm -f db-cognito-data >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          bash ./scripts/start.sh --wait
+          bash ./scripts/verify.sh
+
+          curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 https://aws.home.arpa:9230/ | grep -Fq 'Cognito Local Console'
+
+          pool_json="$(curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            -H 'Content-Type: application/json' \
+            -X POST --data '{"name":"PreflightConsolePool"}' \
+            https://aws.home.arpa:9230/api/pools)"
+          printf '%s' "$pool_json" | grep -Fq 'PreflightConsolePool'
+          pool_id="$(printf '%s' "$pool_json" | sed -n 's/.*"Id":"\([^"]*\)".*/\1/p')"
+          [[ -n "$pool_id" ]]
+
+          user_json="$(curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            -H 'Content-Type: application/json' \
+            -X POST \
+            --data '{"username":"preflight-user","fullName":"Preflight User","email":"preflight@example.com","password":"TempPass123!","permanent":true}' \
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users")"
+          printf '%s' "$user_json" | grep -Fq '"Username":"preflight-user"'
+          printf '%s' "$user_json" | grep -Fq '"Name":"name","Value":"Preflight User"'
+          printf '%s' "$user_json" | grep -Fq '"Name":"email","Value":"preflight@example.com"'
+
+          users_json="$(curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users")"
+          printf '%s' "$users_json" | grep -Fq '"Username":"preflight-user"'
+          printf '%s' "$users_json" | grep -Fq '"Name":"name","Value":"Preflight User"'
+
+          raw_users="$(curl -fsS -X POST \
+            -H 'Content-Type: application/x-amz-json-1.1' \
+            -H 'X-Amz-Target: AWSCognitoIdentityProviderService.ListUsers' \
+            --data "{\"UserPoolId\":\"$pool_id\",\"Limit\":60}" \
+            http://127.0.0.1:9229/)"
+          printf '%s' "$raw_users" | grep -Fq '"Username":"preflight-user"'
+          printf '%s' "$raw_users" | grep -Fq '"Name":"name","Value":"Preflight User"'
+
+          curl -fsS -X POST \
+            -H 'Content-Type: application/x-amz-json-1.1' \
+            -H 'X-Amz-Target: AWSCognitoIdentityProviderService.ListUserPools' \
+            --data '{"MaxResults":60}' \
+            http://127.0.0.1:9229/ | grep -Fq 'PreflightConsolePool'
+
+          sed -i 's/^ENABLE_COGNITO=.*/ENABLE_COGNITO=false/' "$DEPLOY_ENV_FILE"
+          bash ./scripts/start.sh --wait
+          bash ./scripts/verify.sh
+          ! docker container inspect db-cognito >/dev/null 2>&1
+          ! docker container inspect db-cognito-ui >/dev/null 2>&1
+          docker volume inspect db-cognito-data >/dev/null
+
+          sed -i 's/^ENABLE_COGNITO=.*/ENABLE_COGNITO=true/' "$DEPLOY_ENV_FILE"
+          bash ./scripts/start.sh --wait
+          bash ./scripts/verify.sh
+
+          curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            https://aws.home.arpa:9230/api/pools | grep -Fq 'PreflightConsolePool'
+          persisted_users="$(curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users")"
+          printf '%s' "$persisted_users" | grep -Fq '"Username":"preflight-user"'
+          printf '%s' "$persisted_users" | grep -Fq '"Name":"name","Value":"Preflight User"'
+
+          curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            -H 'Content-Type: application/json' \
+            -X POST --data '{"password":"UpdatedPass123!","permanent":true}' \
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users/preflight-user/password" | grep -Fq '"ok":true'
+
+          curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            -X DELETE \
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users/preflight-user" | grep -Fq '"ok":true'
+          if curl -kfsS --resolve aws.home.arpa:9230:127.0.0.1 \
+            "https://aws.home.arpa:9230/api/pools/$pool_id/users" | grep -Fq 'preflight-user'; then
+            echo "Cognito management UI failed to delete the test user." >&2
+            exit 1
+          fi
+
+          docker port db-cognito 9229/tcp | grep -Fq '9229'
+          docker port db-ui-gateway 9230/tcp | grep -Fq '9230'
+          echo "Cognito API :9229 and HTTPS management UI :9230 are independently published: ok"
+          echo "Cognito management UI CRUD and enable/disable/re-enable persistence test passed."

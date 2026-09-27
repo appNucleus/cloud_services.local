@@ -3,625 +3,253 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>dbs.home.arpa · Data Platform</title>
-  <meta name="description" content="Local database and storage dashboard for dbs.home.arpa" />
+  <title>aws.home.arpa · Local AWS Services</title>
+  <meta name="description" content="Local AWS-compatible services dashboard" />
   <style>
     :root {
       --bg: #0b1220;
-      --panel: rgba(15, 23, 42, 0.86);
+      --panel: rgba(15, 23, 42, 0.82);
       --panel-2: rgba(30, 41, 59, 0.72);
-      --card: rgba(15, 23, 42, 0.74);
       --border: rgba(148, 163, 184, 0.18);
       --text: #e5e7eb;
       --muted: #94a3b8;
       --muted-2: #64748b;
       --accent: #60a5fa;
-      --accent-2: #22d3ee;
       --ok: #34d399;
-      --warn: #fbbf24;
-      --danger: #fb7185;
+      --off: #94a3b8;
       --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
-      --radius-xl: 28px;
-      --radius-lg: 20px;
-      --radius-md: 14px;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-
     * { box-sizing: border-box; }
-
-    html { min-height: 100%; }
-
     body {
-      min-height: 100vh;
       margin: 0;
+      min-height: 100vh;
       color: var(--text);
       font-family: var(--sans);
       background:
-        radial-gradient(circle at 12% 10%, rgba(59, 130, 246, 0.28), transparent 30%),
-        radial-gradient(circle at 82% 3%, rgba(34, 211, 238, 0.20), transparent 28%),
-        radial-gradient(circle at 50% 100%, rgba(16, 185, 129, 0.10), transparent 35%),
+        radial-gradient(circle at 12% 10%, rgba(59,130,246,.26), transparent 30%),
+        radial-gradient(circle at 82% 3%, rgba(34,211,238,.18), transparent 28%),
+        radial-gradient(circle at 50% 100%, rgba(16,185,129,.09), transparent 35%),
         var(--bg);
     }
-
     a { color: inherit; text-decoration: none; }
-
-    .shell {
-      width: min(1220px, calc(100% - 32px));
-      margin: 0 auto;
-      padding: 34px 0 44px;
-    }
-
+    .shell { width: min(1220px, calc(100% - 32px)); margin: 0 auto; padding: 34px 0 44px; }
     .hero {
-      position: relative;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-xl);
-      background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.62));
-      box-shadow: var(--shadow);
-      padding: 30px;
+      border: 1px solid var(--border); border-radius: 28px; padding: 30px;
+      background: linear-gradient(135deg, rgba(15,23,42,.94), rgba(30,41,59,.62)); box-shadow: var(--shadow);
     }
-
-    .hero::after {
-      content: "";
-      position: absolute;
-      inset: auto -80px -160px auto;
-      width: 330px;
-      height: 330px;
-      border-radius: 999px;
-      background: radial-gradient(circle, rgba(96, 165, 250, 0.22), transparent 64%);
-      pointer-events: none;
-    }
-
-    .hero-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
-      align-items: flex-start;
-      position: relative;
-      z-index: 1;
-    }
-
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 9px;
-      color: #bae6fd;
-      border: 1px solid rgba(125, 211, 252, 0.25);
-      background: rgba(14, 165, 233, 0.10);
-      border-radius: 999px;
-      padding: 8px 12px;
-      font-size: 13px;
-      font-weight: 650;
-      letter-spacing: 0.01em;
-    }
-
-    .pulse {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: var(--ok);
-      box-shadow: 0 0 0 6px rgba(52, 211, 153, 0.11);
-    }
-
-    h1 {
-      margin: 18px 0 10px;
-      font-size: clamp(34px, 5vw, 58px);
-      line-height: 0.95;
-      letter-spacing: -0.055em;
-    }
-
-    .subtitle {
-      margin: 0;
-      color: var(--muted);
-      font-size: 16px;
-      max-width: 720px;
-      line-height: 1.55;
-    }
-
-    .hero-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      min-width: 260px;
-    }
-
-    .pill {
-      border: 1px solid var(--border);
-      background: rgba(15, 23, 42, 0.50);
-      border-radius: 999px;
-      padding: 10px 12px;
-      color: var(--muted);
-      font-size: 13px;
-      font-family: var(--mono);
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap: 16px;
-      margin-top: 18px;
-    }
-
-    .section-title {
-      grid-column: 1 / -1;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      margin-top: 14px;
-      color: #f8fafc;
-    }
-
-    .section-title h2 {
-      margin: 0;
-      font-size: 18px;
-      letter-spacing: -0.02em;
-    }
-
-    .section-title span {
-      color: var(--muted-2);
-      font-size: 13px;
-      font-family: var(--mono);
-    }
-
-    .card {
-      grid-column: span 3;
-      position: relative;
-      overflow: hidden;
-      min-height: 220px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      background: linear-gradient(180deg, rgba(15, 23, 42, 0.78), rgba(15, 23, 42, 0.54));
-      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.20);
-      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
-    }
-
-    .card:hover {
-      transform: translateY(-3px);
-      border-color: rgba(96, 165, 250, 0.42);
-      background: linear-gradient(180deg, rgba(30, 41, 59, 0.88), rgba(15, 23, 42, 0.70));
-    }
-
-    .card a.full-link {
-      display: block;
-      height: 100%;
-      padding: 20px;
-    }
-
-    .icon {
-      width: 48px;
-      height: 48px;
-      display: grid;
-      place-items: center;
-      border-radius: 16px;
-      background: rgba(96, 165, 250, 0.10);
-      border: 1px solid rgba(125, 211, 252, 0.18);
-      margin-bottom: 18px;
-    }
-
-    .icon svg { width: 30px; height: 30px; }
-
-    .card h3 {
-      margin: 0 0 8px;
-      font-size: 20px;
-      letter-spacing: -0.03em;
-    }
-
-    .card .role {
-      margin: 0 0 16px;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.45;
-      min-height: 38px;
-    }
-
-    .meta {
-      display: grid;
-      gap: 8px;
-      margin-top: auto;
-    }
-
-    .meta-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      border: 1px solid rgba(148, 163, 184, 0.13);
-      background: rgba(2, 6, 23, 0.24);
-      border-radius: 12px;
-      padding: 9px 10px;
-      font-size: 12px;
-    }
-
-    .meta-row b { color: #cbd5e1; font-weight: 650; }
-    .meta-row code { color: #93c5fd; font-family: var(--mono); font-size: 12px; }
-
-    .aws {
-      grid-column: span 6;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      background: rgba(15, 23, 42, 0.64);
-      padding: 18px;
-      display: grid;
-      grid-template-columns: 54px 1fr;
-      gap: 15px;
-      align-items: start;
-    }
-
-    .aws .icon { margin: 0; }
-
-    .aws h3 {
-      margin: 0 0 8px;
-      font-size: 18px;
-      letter-spacing: -0.02em;
-    }
-
-    .aws-grid {
-      display: grid;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .aws-row {
-      display: grid;
-      grid-template-columns: 118px 1fr;
-      gap: 10px;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.45;
-    }
-
-    .aws-row strong {
-      color: #cbd5e1;
-      font-weight: 650;
-    }
-
-    .tagline {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .tag {
-      display: inline-flex;
-      align-items: center;
-      border: 1px solid rgba(148, 163, 184, 0.16);
-      background: rgba(15, 23, 42, 0.66);
-      color: #cbd5e1;
-      border-radius: 999px;
-      padding: 6px 9px;
-      font-size: 12px;
-      white-space: nowrap;
-    }
-
-    .panel {
-      grid-column: 1 / -1;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      background: rgba(15, 23, 42, 0.62);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    th, td {
-      padding: 14px 16px;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
-      text-align: left;
-      vertical-align: top;
-      font-size: 13px;
-    }
-
-    th {
-      color: #cbd5e1;
-      background: rgba(30, 41, 59, 0.50);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    td { color: var(--muted); }
-    td:first-child { color: #e2e8f0; font-weight: 650; }
-    td code { color: #93c5fd; font-family: var(--mono); font-size: 12px; }
+    .hero-top { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
+    .eyebrow { display: inline-flex; gap: 9px; align-items: center; color: #bae6fd; border: 1px solid rgba(125,211,252,.25); background: rgba(14,165,233,.10); border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 650; }
+    .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 6px rgba(52,211,153,.11); }
+    h1 { margin: 18px 0 10px; font-size: clamp(34px,5vw,58px); line-height: .95; letter-spacing: -.055em; }
+    .subtitle { margin: 0; color: var(--muted); line-height: 1.55; max-width: 760px; }
+    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+    .pill { border: 1px solid var(--border); background: rgba(15,23,42,.50); border-radius: 999px; padding: 10px 12px; color: var(--muted); font-size: 13px; font-family: var(--mono); }
+    .section-title { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 32px 0 14px; }
+    .section-title h2 { margin: 0; font-size: 18px; }
+    .section-title span { color: var(--muted-2); font: 13px var(--mono); }
+    .cards { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+    .card { position: relative; min-height: 230px; border: 1px solid var(--border); border-radius: 20px; background: linear-gradient(180deg, rgba(15,23,42,.80), rgba(15,23,42,.56)); overflow: hidden; transition: 160ms ease; }
+    .card.enabled:hover { transform: translateY(-3px); border-color: rgba(96,165,250,.45); background: linear-gradient(180deg, rgba(30,41,59,.90), rgba(15,23,42,.70)); }
+    .card.disabled { opacity: .57; filter: saturate(.45); }
+    .card-content { height: 100%; display: block; padding: 20px; }
+    .card.disabled .card-link { pointer-events: none; cursor: default; }
+    .card-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+    .icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 16px; background: rgba(96,165,250,.10); border: 1px solid rgba(125,211,252,.18); font: 700 14px var(--mono); color: #93c5fd; }
+    .status { border: 1px solid rgba(52,211,153,.28); background: rgba(16,185,129,.11); color: #6ee7b7; border-radius: 999px; padding: 6px 9px; font: 700 11px var(--mono); letter-spacing: .05em; }
+    .disabled .status { border-color: rgba(148,163,184,.24); background: rgba(100,116,139,.12); color: #cbd5e1; }
+    .card h3 { margin: 18px 0 8px; font-size: 20px; letter-spacing: -.03em; }
+    .role { margin: 0 0 16px; color: var(--muted); font-size: 13px; line-height: 1.45; min-height: 38px; }
+    .meta { display: grid; gap: 8px; }
+    .meta-row { display: flex; justify-content: space-between; gap: 12px; border: 1px solid rgba(148,163,184,.13); background: rgba(2,6,23,.24); border-radius: 12px; padding: 9px 10px; font-size: 12px; }
+    .meta-row b { color: #cbd5e1; } .meta-row code { color: #93c5fd; font-family: var(--mono); }
+    .panel { border: 1px solid var(--border); border-radius: 20px; overflow: hidden; background: rgba(15,23,42,.62); }
+    table { width: 100%; border-collapse: collapse; }
+    th,td { padding: 14px 16px; border-bottom: 1px solid rgba(148,163,184,.12); text-align: left; vertical-align: top; font-size: 13px; }
+    th { color: #cbd5e1; background: rgba(30,41,59,.50); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    td { color: var(--muted); } td:first-child { color: #e2e8f0; font-weight: 650; } td code { color: #93c5fd; font-family: var(--mono); font-size: 12px; }
     tr:last-child td { border-bottom: 0; }
-
-    .footer {
-      margin-top: 18px;
-      color: var(--muted-2);
-      text-align: center;
-      font-size: 12px;
-      font-family: var(--mono);
-    }
-
-    .pg { color: #60a5fa; }
-    .redis { color: #fb7185; }
-    .neo { color: #34d399; }
-    .minio { color: #f87171; }
-    .elasticmq { color: #fbbf24; }
-    .aws-orange { color: #fbbf24; }
-
-    .admin-grid {
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
-
-    .admin-grid .section-title { grid-column: 1 / -1; }
-    .admin-grid .card { grid-column: auto; }
-
-    @media (max-width: 980px) {
-      .admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .card { grid-column: span 6; }
-      .aws { grid-column: span 12; }
-      .hero-top { flex-direction: column; }
-      .hero-actions { justify-content: flex-start; }
-    }
-
-    @media (max-width: 640px) {
-      .shell { width: min(100% - 22px, 1220px); padding-top: 16px; }
-      .hero { padding: 22px; }
-      .admin-grid { grid-template-columns: 1fr; }
-      .card { grid-column: span 12; }
-      .aws { grid-template-columns: 1fr; }
-      .aws-row { grid-template-columns: 1fr; }
-      th:nth-child(3), td:nth-child(3) { display: none; }
-    }
+    .state-enabled { color: #6ee7b7; font-weight: 700; } .state-disabled { color: #cbd5e1; font-weight: 700; }
+    .compat-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+    .compat { border: 1px solid var(--border); border-radius: 20px; background: rgba(15,23,42,.64); padding: 18px; }
+    .compat-head { display: flex; align-items: center; gap: 14px; margin-bottom: 15px; }
+    .compat-head .icon { margin: 0; flex: 0 0 auto; }
+    .compat h3 { margin: 0; font-size: 18px; letter-spacing: -.02em; }
+    .compat-row { display: grid; grid-template-columns: 118px 1fr; gap: 12px; padding: 9px 0; border-top: 1px solid rgba(148,163,184,.10); color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .compat-row strong { color: #cbd5e1; font-weight: 650; }
+    .note { margin-top: 16px; padding: 14px 16px; border: 1px solid var(--border); background: rgba(15,23,42,.54); border-radius: 14px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .note a { color: #93c5fd; text-decoration: underline; text-underline-offset: 2px; }
+    .footer { margin-top: 22px; color: var(--muted-2); text-align: center; font: 12px var(--mono); }
+    @media (max-width: 980px) { .cards { grid-template-columns: repeat(2,minmax(0,1fr)); } .compat-grid { grid-template-columns: 1fr; } .hero-top { flex-direction: column; } .hero-actions { justify-content: flex-start; } }
+    @media (max-width: 640px) { .shell { width: min(100% - 22px,1220px); padding-top: 16px; } .hero { padding: 22px; } .cards { grid-template-columns: 1fr; } .compat-row { grid-template-columns: 1fr; gap: 4px; } }
   </style>
 </head>
 <body>
   <main class="shell">
-    <section class="hero" aria-label="Database platform header">
+    <section class="hero">
       <div class="hero-top">
         <div>
-          <div class="eyebrow"><span class="pulse"></span> Local Data Platform</div>
-          <h1>dbs.home.arpa</h1>
-          <p class="subtitle">PostgreSQL + pgvector, Redis, Neo4j, MinIO, and ElasticMQ administration dashboard.</p>
+          <div class="eyebrow"><span class="pulse"></span> Local AWS-Compatible Platform</div>
+          <h1 data-host>aws.home.arpa</h1>
+          <p class="subtitle">Six independently configurable local services for application development: PostgreSQL + pgvector, Redis, Neo4j, MinIO, ElasticMQ, and Cognito Local.</p>
         </div>
-        <div class="hero-actions" aria-label="Service bindings">
-          <div class="pill">host · dbs.home.arpa</div>
-          <div class="pill">bind · LAN / localhost</div>
+        <div class="hero-actions">
+          <div class="pill">host · <span data-host>aws.home.arpa</span></div>
+          <div class="pill">state · runtime.env</div>
           <div class="pill">stack · Docker Compose</div>
         </div>
       </div>
     </section>
 
-    <section class="grid admin-grid" aria-label="Admin consoles">
-      <div class="section-title">
-        <h2>Admin consoles</h2>
-        <span>click to open</span>
-      </div>
-
-      <article class="card">
-        <a class="full-link" href="https://dbs.home.arpa:5050" target="_blank" rel="noopener noreferrer" aria-label="Open pgAdmin">
-          <div class="icon pg" aria-hidden="true">
-            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M18 12h28c4.4 0 8 3.6 8 8v24c0 4.4-3.6 8-8 8H18c-4.4 0-8-3.6-8-8V20c0-4.4 3.6-8 8-8Z" stroke="currentColor" stroke-width="4"/>
-              <path d="M20 25h24M20 33h24M20 41h15" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <h3>pgAdmin</h3>
-          <p class="role">PostgreSQL administration, schema browsing, SQL workbench.</p>
-          <div class="meta">
-            <div class="meta-row"><b>UI</b><code>:5050</code></div>
-            <div class="meta-row"><b>DB</b><code>:5432</code></div>
-          </div>
+    <div class="section-title"><h2>Services</h2><span>configured state · enabled / disabled</span></div>
+    <section class="cards" aria-label="Local AWS-compatible services">
+      <article class="card" data-service="postgres">
+        <a class="card-content card-link" data-admin="postgres" target="_blank" rel="noopener noreferrer">
+          <div class="card-top"><div class="icon">PG</div><span class="status" data-status>ENABLED</span></div>
+          <h3>PostgreSQL + pgvector</h3><p class="role">Application data, chat history, RAG chunks, vectors, and audit data.</p>
+          <div class="meta"><div class="meta-row"><b>Database</b><code data-endpoint="postgres"></code></div><div class="meta-row"><b>pgAdmin</b><code data-admin-text="postgres"></code></div></div>
         </a>
       </article>
-
-      <article class="card">
-        <a class="full-link" href="https://dbs.home.arpa:5540" target="_blank" rel="noopener noreferrer" aria-label="Open RedisInsight">
-          <div class="icon redis" aria-hidden="true">
-            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M32 8 8 20l24 12 24-12L32 8Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
-              <path d="M8 32l24 12 24-12M8 44l24 12 24-12" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <h3>RedisInsight</h3>
-          <p class="role">Redis keys, cache inspection, memory and command monitoring.</p>
-          <div class="meta">
-            <div class="meta-row"><b>UI</b><code>:5540</code></div>
-            <div class="meta-row"><b>Redis</b><code>:6379</code></div>
-          </div>
+      <article class="card" data-service="redis">
+        <a class="card-content card-link" data-admin="redis" target="_blank" rel="noopener noreferrer">
+          <div class="card-top"><div class="icon">RD</div><span class="status" data-status>ENABLED</span></div>
+          <h3>Redis</h3><p class="role">Cache, locks, rate limits, transient state, and fast application coordination.</p>
+          <div class="meta"><div class="meta-row"><b>Redis</b><code data-endpoint="redis"></code></div><div class="meta-row"><b>RedisInsight</b><code data-admin-text="redis"></code></div></div>
         </a>
       </article>
-
-      <article class="card">
-        <a class="full-link" href="https://dbs.home.arpa:7474" target="_blank" rel="noopener noreferrer" aria-label="Open Neo4j Browser">
-          <div class="icon neo" aria-hidden="true">
-            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="18" cy="32" r="8" stroke="currentColor" stroke-width="4"/>
-              <circle cx="46" cy="18" r="8" stroke="currentColor" stroke-width="4"/>
-              <circle cx="46" cy="46" r="8" stroke="currentColor" stroke-width="4"/>
-              <path d="M25 28 39 22M25 36l14 6" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <h3>Neo4j Browser</h3>
-          <p class="role">Knowledge graph, concept hierarchy, Cypher workbench.</p>
-          <div class="meta">
-            <div class="meta-row"><b>UI</b><code>:7474</code></div>
-            <div class="meta-row"><b>Bolt</b><code>:7687</code></div>
-          </div>
+      <article class="card" data-service="neo4j">
+        <a class="card-content card-link" data-admin="neo4j" target="_blank" rel="noopener noreferrer">
+          <div class="card-top"><div class="icon">N4</div><span class="status" data-status>ENABLED</span></div>
+          <h3>Neo4j</h3><p class="role">Knowledge graphs, concept relationships, graph traversal, and GraphRAG.</p>
+          <div class="meta"><div class="meta-row"><b>Bolt</b><code data-endpoint="neo4j"></code></div><div class="meta-row"><b>Browser</b><code data-admin-text="neo4j"></code></div></div>
         </a>
       </article>
-
-      <article class="card">
-        <a class="full-link" href="https://dbs.home.arpa:9001" target="_blank" rel="noopener noreferrer" aria-label="Open MinIO Console">
-          <div class="icon minio" aria-hidden="true">
-            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 20 32 8l20 12v24L32 56 12 44V20Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
-              <path d="M12 20 32 32l20-12M32 32v24" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <h3>MinIO Console</h3>
-          <p class="role">S3-compatible object storage, buckets, policies, files.</p>
-          <div class="meta">
-            <div class="meta-row"><b>Console</b><code>:9001</code></div>
-            <div class="meta-row"><b>S3 API</b><code>:9000</code></div>
-          </div>
+      <article class="card" data-service="minio">
+        <a class="card-content card-link" data-admin="minio" target="_blank" rel="noopener noreferrer">
+          <div class="card-top"><div class="icon">S3</div><span class="status" data-status>ENABLED</span></div>
+          <h3>MinIO</h3><p class="role">S3-compatible object storage for documents, images, exports, and artifacts.</p>
+          <div class="meta"><div class="meta-row"><b>S3 API</b><code data-endpoint="minio"></code></div><div class="meta-row"><b>Console</b><code data-admin-text="minio"></code></div></div>
         </a>
       </article>
-
-      <article class="card">
-        <a class="full-link" href="https://dbs.home.arpa:9325" target="_blank" rel="noopener noreferrer" aria-label="Open ElasticMQ UI">
-          <div class="icon elasticmq" aria-hidden="true">
-            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 18h40v28H12V18Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
-              <path d="M20 27h24M20 37h16" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-              <path d="m46 34 6 6-6 6" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <h3>ElasticMQ UI</h3>
-          <p class="role">SQS-compatible queues, messages, attributes, and local queue inspection.</p>
-          <div class="meta">
-            <div class="meta-row"><b>UI</b><code>:9325</code></div>
-            <div class="meta-row"><b>SQS API</b><code>:9324</code></div>
-          </div>
+      <article class="card" data-service="elasticmq">
+        <a class="card-content card-link" data-admin="elasticmq" target="_blank" rel="noopener noreferrer">
+          <div class="card-top"><div class="icon">SQ</div><span class="status" data-status>ENABLED</span></div>
+          <h3>ElasticMQ</h3><p class="role">SQS-compatible local queues for async jobs, retries, and decoupled work.</p>
+          <div class="meta"><div class="meta-row"><b>SQS API</b><code data-endpoint="elasticmq"></code></div><div class="meta-row"><b>Queue UI</b><code data-admin-text="elasticmq"></code></div></div>
+        </a>
+      </article>
+      <article class="card" data-service="cognito">
+        <a class="card-content card-link" data-admin="cognito" target="_blank" rel="noopener noreferrer">
+          <div class="card-top"><div class="icon">ID</div><span class="status" data-status>ENABLED</span></div>
+          <h3>Cognito Local</h3><p class="role">Amazon Cognito User Pools emulator for local authentication, users, clients, and JWTs.</p>
+          <div class="meta"><div class="meta-row"><b>User Pools API</b><code data-endpoint="cognito"></code></div><div class="meta-row"><b>Management UI</b><code data-admin-text="cognito"></code></div></div>
         </a>
       </article>
     </section>
 
-    <section class="grid" aria-label="AWS compatibility">
-      <div class="section-title">
-        <h2>AWS compatibility map</h2>
-        <span>migration targets</span>
-      </div>
-
-      <article class="aws">
-        <div class="icon pg" aria-hidden="true">
-          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 18c0-6 8-10 18-10s18 4 18 10v28c0 6-8 10-18 10s-18-4-18-10V18Z" stroke="currentColor" stroke-width="4"/><path d="M14 18c0 6 8 10 18 10s18-4 18-10M14 32c0 6 8 10 18 10s18-4 18-10" stroke="currentColor" stroke-width="4"/></svg>
-        </div>
-        <div>
-          <h3>PostgreSQL + pgvector</h3>
-          <div class="aws-grid">
-            <div class="aws-row"><strong>AWS target</strong><span>Amazon Aurora Serverless v2 for PostgreSQL</span></div>
-            <div class="aws-row"><strong>Lower fixed</strong><span>Amazon RDS for PostgreSQL</span></div>
-            <div class="aws-row"><strong>Use case</strong><span>App data, chat history, RAG chunks, embeddings, audit logs.</span></div>
-          </div>
-          <div class="tagline"><span class="tag">PostgreSQL-compatible</span><span class="tag">pgvector-ready</span><span class="tag">auto capacity</span></div>
-        </div>
+    <div class="section-title"><h2>AWS compatibility</h2><span>local service → AWS migration target</span></div>
+    <section class="compat-grid" aria-label="AWS compatibility map">
+      <article class="compat">
+        <div class="compat-head"><div class="icon">PG</div><h3>PostgreSQL + pgvector</h3></div>
+        <div class="compat-row"><strong>AWS target</strong><span>Amazon Aurora Serverless v2 for PostgreSQL</span></div>
+        <div class="compat-row"><strong>Lower fixed</strong><span>Amazon RDS for PostgreSQL</span></div>
+        <div class="compat-row"><strong>Compatibility</strong><span>PostgreSQL-compatible; pgvector-ready migration path</span></div>
       </article>
-
-      <article class="aws">
-        <div class="icon redis" aria-hidden="true">
-          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 8 8 20l24 12 24-12L32 8Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/><path d="M8 32l24 12 24-12M8 44l24 12 24-12" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </div>
-        <div>
-          <h3>Redis</h3>
-          <div class="aws-grid">
-            <div class="aws-row"><strong>AWS target</strong><span>Amazon ElastiCache Serverless for Valkey / Redis OSS</span></div>
-            <div class="aws-row"><strong>Lower fixed</strong><span>Amazon ElastiCache node-based cache</span></div>
-            <div class="aws-row"><strong>Use case</strong><span>Cache, queues, locks, rate limits, short-lived agent state.</span></div>
-          </div>
-          <div class="tagline"><span class="tag">Redis-compatible</span><span class="tag">serverless cache</span><span class="tag">instant scaling</span></div>
-        </div>
+      <article class="compat">
+        <div class="compat-head"><div class="icon">RD</div><h3>Redis</h3></div>
+        <div class="compat-row"><strong>AWS target</strong><span>Amazon ElastiCache Serverless for Valkey / Redis OSS</span></div>
+        <div class="compat-row"><strong>Lower fixed</strong><span>Amazon ElastiCache node-based cache</span></div>
+        <div class="compat-row"><strong>Compatibility</strong><span>Redis-compatible client and command model; review version-specific commands</span></div>
       </article>
-
-      <article class="aws">
-        <div class="icon neo" aria-hidden="true">
-          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="32" r="8" stroke="currentColor" stroke-width="4"/><circle cx="46" cy="18" r="8" stroke="currentColor" stroke-width="4"/><circle cx="46" cy="46" r="8" stroke="currentColor" stroke-width="4"/><path d="M25 28 39 22M25 36l14 6" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>
-        </div>
-        <div>
-          <h3>Neo4j</h3>
-          <div class="aws-grid">
-            <div class="aws-row"><strong>AWS target</strong><span>Amazon Neptune Serverless</span></div>
-            <div class="aws-row"><strong>Closest Neo4j</strong><span>Neo4j Aura on AWS Marketplace</span></div>
-            <div class="aws-row"><strong>Use case</strong><span>Knowledge graph, skill hierarchy, concept dependencies, GraphRAG.</span></div>
-          </div>
-          <div class="tagline"><span class="tag">openCypher path</span><span class="tag">graph-native</span><span class="tag">schema review</span></div>
-        </div>
+      <article class="compat">
+        <div class="compat-head"><div class="icon">N4</div><h3>Neo4j</h3></div>
+        <div class="compat-row"><strong>AWS target</strong><span>Amazon Neptune Serverless</span></div>
+        <div class="compat-row"><strong>Closest Neo4j</strong><span>Neo4j Aura on AWS Marketplace</span></div>
+        <div class="compat-row"><strong>Compatibility</strong><span>Graph-native migration path; query/schema semantics require review for Neptune</span></div>
       </article>
-
-      <article class="aws">
-        <div class="icon minio" aria-hidden="true">
-          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 20 32 8l20 12v24L32 56 12 44V20Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/><path d="M12 20 32 32l20-12M32 32v24" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/></svg>
-        </div>
-        <div>
-          <h3>MinIO</h3>
-          <div class="aws-grid">
-            <div class="aws-row"><strong>AWS target</strong><span>Amazon S3</span></div>
-            <div class="aws-row"><strong>Cost tier</strong><span>S3 Standard, Intelligent-Tiering, Glacier classes</span></div>
-            <div class="aws-row"><strong>Use case</strong><span>Raw HTML, PDFs, images, snapshots, exports, document assets.</span></div>
-          </div>
-          <div class="tagline"><span class="tag">S3-compatible</span><span class="tag">object storage</span><span class="tag">elastic scale</span></div>
-        </div>
+      <article class="compat">
+        <div class="compat-head"><div class="icon">S3</div><h3>MinIO</h3></div>
+        <div class="compat-row"><strong>AWS target</strong><span>Amazon S3</span></div>
+        <div class="compat-row"><strong>Cost tiers</strong><span>S3 Standard, Intelligent-Tiering, and Glacier storage classes</span></div>
+        <div class="compat-row"><strong>Compatibility</strong><span>S3-compatible object API; remove the local endpoint override in AWS</span></div>
       </article>
-
-      <article class="aws">
-        <div class="icon elasticmq" aria-hidden="true">
-          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 18h40v28H12V18Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/><path d="M20 27h24M20 37h16" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="m46 34 6 6-6 6" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </div>
-        <div>
-          <h3>ElasticMQ</h3>
-          <div class="aws-grid">
-            <div class="aws-row"><strong>AWS target</strong><span>Amazon SQS</span></div>
-            <div class="aws-row"><strong>Interface</strong><span>Amazon SQS-compatible API</span></div>
-            <div class="aws-row"><strong>Use case</strong><span>Async jobs, agent tasks, retries, DLQs, and decoupled work queues.</span></div>
-          </div>
-          <div class="tagline"><span class="tag">SQS-compatible</span><span class="tag">message queue</span><span class="tag">local development</span></div>
-        </div>
+      <article class="compat">
+        <div class="compat-head"><div class="icon">SQ</div><h3>ElasticMQ</h3></div>
+        <div class="compat-row"><strong>AWS target</strong><span>Amazon SQS</span></div>
+        <div class="compat-row"><strong>Interface</strong><span>Amazon SQS-compatible API</span></div>
+        <div class="compat-row"><strong>Compatibility</strong><span>Local queue semantics for development; use AWS queues, IAM, and policies in production</span></div>
+      </article>
+      <article class="compat">
+        <div class="compat-head"><div class="icon">ID</div><h3>Cognito Local</h3></div>
+        <div class="compat-row"><strong>AWS target</strong><span>Amazon Cognito User Pools</span></div>
+        <div class="compat-row"><strong>Local scope</strong><span>User Pools emulator; not a full Identity Pools implementation</span></div>
+        <div class="compat-row"><strong>Migration note</strong><span>Align pools, app clients, callback URLs, and auth flows in Amazon Cognito</span></div>
       </article>
     </section>
-
-    <section class="grid" aria-label="Endpoints">
-      <div class="section-title">
-        <h2>Service endpoints</h2>
-        <span>
-          <code>
-            <a href="https://github.com/appNucleus/dbs.local/blob/release/docs/DEFAULT_PASSWORDS.md">Default Passwords</a>
-          </code>
-        </span>
-      </div>
-      <div class="panel">
-        <table>
-          <thead>
-            <tr>
-              <th>Service</th>
-              <th>Endpoint</th>
-              <th>Admin</th>
-              <th>AWS target</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>PostgreSQL + pgvector</td>
-              <td><code>dbs.home.arpa:5432</code></td>
-              <td><code>https://dbs.home.arpa:5050</code></td>
-              <td>Amazon Aurora Serverless v2 / RDS PostgreSQL</td>
-            </tr>
-            <tr>
-              <td>Redis</td>
-              <td><code>redis://dbs.home.arpa:6379/0</code></td>
-              <td><code>https://dbs.home.arpa:5540</code></td>
-              <td>Amazon ElastiCache Serverless</td>
-            </tr>
-            <tr>
-              <td>Neo4j</td>
-              <td><code>bolt://dbs.home.arpa:7687</code></td>
-              <td><code>https://dbs.home.arpa:7474</code></td>
-              <td>Amazon Neptune Serverless</td>
-            </tr>
-            <tr>
-              <td>MinIO</td>
-              <td><code>http://dbs.home.arpa:9000</code></td>
-              <td><code>https://dbs.home.arpa:9001</code></td>
-              <td>Amazon S3</td>
-            </tr>
-            <tr>
-              <td>ElasticMQ</td>
-              <td><code>http://dbs.home.arpa:9324</code></td>
-              <td><code>https://dbs.home.arpa:9325</code></td>
-              <td>Amazon SQS</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <div class="footer">dbs.home.arpa · local Docker data platform</div>
+    <div class="note">“Enabled / Disabled” reflects the deployment configuration in <code>runtime.env</code>, not live health. Disabled services remain visible, their containers are removed, and their named Docker volumes are preserved for later re-enablement. <a href="https://github.com/appNucleus/cloud_services.local/blob/release/docs/DEFAULT_PASSWORDS.md">Credentials and access notes</a>.</div>
+    <div class="footer"><span data-host>aws.home.arpa</span> · local AWS-compatible Docker platform</div>
   </main>
+
+  <script>
+    (() => {
+      const renderDashboard = () => {
+      const cfg = window.CLOUD_SERVICES_CONFIG || {
+        hostname: 'aws.home.arpa',
+        services: { postgres: true, redis: true, neo4j: true, minio: true, elasticmq: true, cognito: true },
+        ports: { postgres: 5432, pgadmin: 5050, redis: 6379, redisinsight: 5540, neo4jHttp: 7474, neo4jBolt: 7687, minioApi: 9000, minioConsole: 9001, elasticmqApi: 9324, elasticmqUi: 9325, cognito: 9229, cognitoUi: 9230 }
+      };
+      const h = cfg.hostname;
+      const p = cfg.ports;
+      const endpoints = {
+        postgres: `${h}:${p.postgres}`,
+        redis: `redis://${h}:${p.redis}/0`,
+        neo4j: `bolt://${h}:${p.neo4jBolt}`,
+        minio: `http://${h}:${p.minioApi}`,
+        elasticmq: `http://${h}:${p.elasticmqApi}`,
+        cognito: `http://${h}:${p.cognito}`
+      };
+      const admins = {
+        postgres: `https://${h}:${p.pgadmin}`,
+        redis: `https://${h}:${p.redisinsight}`,
+        neo4j: `https://${h}:${p.neo4jHttp}`,
+        minio: `https://${h}:${p.minioConsole}`,
+        elasticmq: `https://${h}:${p.elasticmqUi}`,
+        cognito: `https://${h}:${p.cognitoUi}`
+      };
+
+      document.title = `${h} · Local AWS Services`;
+      document.querySelectorAll('[data-host]').forEach(el => { el.textContent = h; });
+
+      for (const [service, enabled] of Object.entries(cfg.services)) {
+        const card = document.querySelector(`[data-service="${service}"]`);
+        if (card) {
+          card.classList.toggle('enabled', !!enabled);
+          card.classList.toggle('disabled', !enabled);
+          const badge = card.querySelector('[data-status]');
+          if (badge) badge.textContent = enabled ? 'ENABLED' : 'DISABLED';
+          const link = card.querySelector('[data-admin]');
+          if (link && admins[service]) {
+            if (enabled) {
+              link.href = admins[service];
+              link.removeAttribute('aria-disabled');
+            } else {
+              link.removeAttribute('href');
+              link.setAttribute('aria-disabled', 'true');
+            }
+          }
+        }
+        document.querySelectorAll(`[data-endpoint="${service}"]`).forEach(el => { el.textContent = endpoints[service]; });
+        document.querySelectorAll(`[data-admin-text="${service}"]`).forEach(el => { el.textContent = admins[service] || 'API only'; });
+      }
+      };
+
+      const runtimeScript = document.createElement('script');
+      runtimeScript.src = `/runtime-config.js?t=${Date.now()}`;
+      runtimeScript.onload = renderDashboard;
+      runtimeScript.onerror = renderDashboard;
+      document.head.appendChild(runtimeScript);
+    })();
+  </script>
 </body>
 </html>

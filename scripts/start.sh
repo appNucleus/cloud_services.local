@@ -14,8 +14,15 @@ fi
 
 ensure_runtime_env_file
 load_runtime_env
+configure_service_selection
 
-bash "$repo_root/scripts/generate-pgadmin-config.sh"
+bash "$repo_root/scripts/generate-dashboard-state.sh"
+if service_enabled postgres; then
+  bash "$repo_root/scripts/generate-pgadmin-config.sh"
+fi
+if service_enabled cognito; then
+  bash "$repo_root/scripts/generate-cognito-config.sh"
+fi
 
 mkdir -p \
   "$(repo_path "${POSTGRES_INITDB_DIR:-./initdb/postgres}")" \
@@ -23,21 +30,7 @@ mkdir -p \
   "$(repo_path "${LOCAL_BACKUP_DIR:-./backups}")"
 
 cd "$repo_root"
-
 log_tail="${DEPLOY_LOG_TAIL:-200}"
-
-core_services=(
-  postgres
-  pgadmin
-  redis
-  redisinsight
-  neo4j
-  minio
-  elasticmq
-  elasticmq-ui
-  ui-gateway
-  dashboard
-)
 
 known_containers=(
   "${POSTGRES_CONTAINER_NAME:-db-postgres}"
@@ -48,6 +41,8 @@ known_containers=(
   "${MINIO_CONTAINER_NAME:-db-minio}"
   "${ELASTICMQ_CONTAINER_NAME:-db-elasticmq}"
   "${ELASTICMQ_UI_CONTAINER_NAME:-db-elasticmq-ui}"
+  "${COGNITO_CONTAINER_NAME:-db-cognito}"
+  "${COGNITO_UI_CONTAINER_NAME:-db-cognito-ui}"
   "${UI_GATEWAY_CONTAINER_NAME:-db-ui-gateway}"
   "${DASHBOARD_CONTAINER_NAME:-db-dashboard}"
   "${MINIO_INIT_CONTAINER_NAME:-db-minio-init}"
@@ -55,101 +50,123 @@ known_containers=(
 
 print_deploy_debug() {
   local reason="${1:-unknown failure}"
-
   echo "::group::DB deployment debug: $reason"
-
   echo
   echo "===== Runtime context ====="
   echo "Repo root:        $repo_root"
   echo "Runtime env file: $runtime_env_file"
+  echo "Platform host:    ${PLATFORM_HOSTNAME:-aws.home.arpa}"
+  echo "Profiles:         ${COMPOSE_PROFILES:-<none>}"
   echo "Wait enabled:     $wait_for_health"
   echo "Wait timeout:     ${COMPOSE_WAIT_TIMEOUT:-600}"
   echo "Log tail:         $log_tail"
-
   echo
-  echo "===== Docker version ====="
   docker version || true
-
-  echo
-  echo "===== Docker Compose version ====="
   docker compose version || true
-
   echo
-  echo "===== Compose services ====="
-  compose config --services || true
-
+  echo "===== Compose services (all profiles) ====="
+  compose_all_profiles config --services || true
   echo
-  echo "===== Compose status ====="
-  compose ps -a || true
-
+  echo "===== Compose status (all profiles) ====="
+  compose_all_profiles ps -a || true
   echo
   echo "===== DB containers ====="
-  docker ps -a \
-    --filter "name=db-" \
-    --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}" \
-    || true
+  docker ps -a --filter "name=db-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}" || true
 
-  echo
-  echo "===== Container health/details ====="
   for container_name in "${known_containers[@]}"; do
     if docker container inspect "$container_name" >/dev/null 2>&1; then
       echo
-      echo "----- $container_name inspect state -----"
-      docker inspect "$container_name" \
-        --format 'Name={{.Name}} Status={{.State.Status}} ExitCode={{.State.ExitCode}} Restarting={{.State.Restarting}} Health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
-        || true
-
-      echo
-      echo "----- $container_name healthcheck history -----"
-      docker inspect "$container_name" \
-        --format '{{if .State.Health}}{{range .State.Health.Log}}Exit={{.ExitCode}} Start={{.Start}} End={{.End}} Output={{printf "%q" .Output}}{{println}}{{end}}{{else}}No Docker healthcheck configured.{{end}}' \
-        || true
-
-      echo
-      echo "----- $container_name recent logs -----"
-      docker logs "$container_name" --tail "$log_tail" 2>&1 || true
-    else
-      echo
       echo "----- $container_name -----"
-      echo "Container does not exist."
+      docker inspect "$container_name" \
+        --format 'Name={{.Name}} Status={{.State.Status}} ExitCode={{.State.ExitCode}} Restarting={{.State.Restarting}} Health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' || true
+      docker logs "$container_name" --tail "$log_tail" 2>&1 || true
     fi
   done
-
   echo "::endgroup::"
 }
 
-up_args=(
-  up
-  --detach
-  --remove-orphans
-)
+# Reconcile enabled -> disabled transitions explicitly. Compose profiles do not
+# guarantee removal of containers that belonged to a profile active previously.
+if (( ${#disabled_containers[@]} > 0 )); then
+  echo "Reconciling disabled service containers (volumes are preserved):"
+  for container_name in "${disabled_containers[@]}"; do
+    if docker container inspect "$container_name" >/dev/null 2>&1; then
+      echo " - removing $container_name"
+      docker rm --force "$container_name" >/dev/null
+    else
+      echo " - $container_name already absent"
+    fi
+  done
+fi
 
+# The UI gateway is deliberately recreated on every deployment. Its Caddyfile is
+# bind-mounted, and changing file contents alone does not make a running Caddy
+# process reload new routes.
+ui_gateway_container="${UI_GATEWAY_CONTAINER_NAME:-db-ui-gateway}"
+if docker container inspect "$ui_gateway_container" >/dev/null 2>&1; then
+  echo "Refreshing UI gateway so HTTPS routing changes take effect: $ui_gateway_container"
+  docker rm --force "$ui_gateway_container" >/dev/null
+fi
+
+# Cognito Local uses an intentionally external named volume so existing user-pool
+# data survives service toggles and migrations without Compose ownership warnings.
+# Cognito writes its config file at runtime, so seed the generated config into the
+# writable persistent volume before startup instead of bind-mounting it read-only.
+if service_enabled cognito; then
+  cognito_image="${COGNITO_IMAGE:-jagregory/cognito-local:5.3.0}"
+  cognito_volume="${COGNITO_VOLUME_NAME:-db-cognito-data}"
+  cognito_config="$(repo_path "${COGNITO_CONFIG_FILE:-./generated/cognito/config.json}")"
+
+  if docker volume inspect "$cognito_volume" >/dev/null 2>&1; then
+    echo "Using Cognito Local persistent volume: $cognito_volume"
+  else
+    docker volume create "$cognito_volume" >/dev/null
+    echo "Created Cognito Local persistent volume: $cognito_volume"
+  fi
+
+  if ! docker image inspect "$cognito_image" >/dev/null 2>&1; then
+    docker pull "$cognito_image"
+  fi
+  docker run --rm \
+    --entrypoint /bin/sh \
+    --mount "type=volume,src=$cognito_volume,dst=/app/.cognito" \
+    --mount "type=bind,src=$cognito_config,dst=/tmp/config.json,readonly" \
+    "$cognito_image" \
+    -c 'cp /tmp/config.json /app/.cognito/config.json && chmod 0644 /app/.cognito/config.json'
+  echo "Cognito Local configuration synchronized into persistent volume: $cognito_volume"
+
+  # Cognito Local reads config at process startup, and the companion UI loads its
+  # server code at startup. Recreate only these two containers so repository/config
+  # updates take effect while preserving the external Cognito data volume.
+  for container_name in "${COGNITO_UI_CONTAINER_NAME:-db-cognito-ui}" "${COGNITO_CONTAINER_NAME:-db-cognito}"; do
+    if docker container inspect "$container_name" >/dev/null 2>&1; then
+      echo "Refreshing Cognito container: $container_name"
+      docker rm --force "$container_name" >/dev/null
+    fi
+  done
+fi
+
+up_args=(up --detach --remove-orphans)
 if [[ "$wait_for_health" == "true" ]]; then
   up_args+=(--wait --wait-timeout "${COMPOSE_WAIT_TIMEOUT:-600}")
 fi
 
-echo "Starting long-running DB services only:"
-printf ' - %s\n' "${core_services[@]}"
+echo "Starting enabled long-running services:"
+printf ' - %s\n' "${enabled_services[@]}"
 
-if ! compose "${up_args[@]}" "${core_services[@]}"; then
+if ! compose "${up_args[@]}" "${enabled_services[@]}"; then
   print_deploy_debug "long-running service startup failed"
   exit 1
 fi
 
-# compose --wait handles services with reliable in-container healthchecks.
-# Browser/admin services and ElasticMQ are intentionally verified from the host
-# by verify.sh, which retries their real endpoints instead of relying on tools
-# that may not exist inside third-party images. No arbitrary sleep is needed.
 if [[ "$wait_for_health" == "true" ]]; then
   echo "Compose health checks passed; host-level smoke tests will retry remaining endpoints until ready."
 fi
 
-if [[ "${RUN_MINIO_INIT:-true}" == "true" ]]; then
+if service_enabled minio && [[ "${RUN_MINIO_INIT:-true}" == "true" ]]; then
   minio_init_container="${MINIO_INIT_CONTAINER_NAME:-db-minio-init}"
-
   echo
   echo "Running MinIO one-shot initialization separately..."
-
   compose rm --force --stop minio-init >/dev/null 2>&1 || true
 
   if ! compose up --detach --no-deps minio-init; then
@@ -163,7 +180,6 @@ if [[ "${RUN_MINIO_INIT:-true}" == "true" ]]; then
   fi
 
   minio_init_exit_code="$(docker wait "$minio_init_container" || echo 125)"
-
   echo
   echo "===== MinIO init logs ====="
   docker logs "$minio_init_container" --tail "$log_tail" 2>&1 || true
@@ -175,10 +191,11 @@ if [[ "${RUN_MINIO_INIT:-true}" == "true" ]]; then
   fi
 
   compose rm --force --stop minio-init >/dev/null 2>&1 || true
-
   echo "MinIO one-shot initialization completed successfully."
+elif ! service_enabled minio; then
+  echo "MinIO is disabled; skipping MinIO initialization."
 else
-  echo "RUN_MINIO_INIT is not true; skipping MinIO initialization."
+  echo "RUN_MINIO_INIT is false; skipping MinIO initialization."
 fi
 
 echo

@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-
-# shellcheck source=common.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 load_runtime_env
 cd "$repo_root"
-compose stop
-echo "Stopped. Data preserved."
+compose_all_profiles stop
+echo "Stopped all stack containers. Data volumes preserved."
