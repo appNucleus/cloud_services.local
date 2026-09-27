@@ -107,19 +107,6 @@ if docker container inspect "$ui_gateway_container" >/dev/null 2>&1; then
   docker rm --force "$ui_gateway_container" >/dev/null
 fi
 
-# Migrate the earlier Cognito layout safely. The backend previously published
-# host port 9229 directly over HTTP. Remove only that old container instance so
-# the HTTPS UI gateway can own host port 9229. The named Cognito data volume is
-# external/preserved and is never removed here.
-if service_enabled cognito; then
-  cognito_container="${COGNITO_CONTAINER_NAME:-db-cognito}"
-  if docker container inspect "$cognito_container" >/dev/null 2>&1 \
-    && [[ -n "$(docker port "$cognito_container" 9229/tcp 2>/dev/null || true)" ]]; then
-    echo "Migrating Cognito Local from direct HTTP :9229 to HTTPS gateway :9229."
-    docker rm --force "$cognito_container" >/dev/null
-  fi
-fi
-
 # Cognito Local uses an intentionally external named volume so existing user-pool
 # data survives service toggles and migrations without Compose ownership warnings.
 # Cognito writes its config file at runtime, so seed the generated config into the
