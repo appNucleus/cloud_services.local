@@ -117,11 +117,12 @@ jobs:
           bash ./scripts/start.sh --wait
           bash ./scripts/verify.sh
 
-          curl -fsS -X POST \
+          curl -kfsS --resolve aws.home.arpa:9229:127.0.0.1 https://aws.home.arpa:9229/ | grep -Fq 'Cognito Local'
+          curl -kfsS --resolve aws.home.arpa:9229:127.0.0.1 -X POST \
             -H 'Content-Type: application/x-amz-json-1.1' \
             -H 'X-Amz-Target: AWSCognitoIdentityProviderService.CreateUserPool' \
             --data '{"PoolName":"PreflightPersistencePool"}' \
-            http://127.0.0.1:9229/ | grep -Fq 'PreflightPersistencePool'
+            https://aws.home.arpa:9229/ | grep -Fq 'PreflightPersistencePool'
 
           sed -i 's/^ENABLE_COGNITO=.*/ENABLE_COGNITO=false/' "$DEPLOY_ENV_FILE"
           bash ./scripts/start.sh --wait
@@ -133,10 +134,17 @@ jobs:
           bash ./scripts/start.sh --wait
           bash ./scripts/verify.sh
 
-          curl -fsS -X POST \
+          curl -kfsS --resolve aws.home.arpa:9229:127.0.0.1 -X POST \
             -H 'Content-Type: application/x-amz-json-1.1' \
             -H 'X-Amz-Target: AWSCognitoIdentityProviderService.ListUserPools' \
             --data '{"MaxResults":60}' \
-            http://127.0.0.1:9229/ | grep -Fq 'PreflightPersistencePool'
+            https://aws.home.arpa:9229/ | grep -Fq 'PreflightPersistencePool'
+
+          if docker port db-cognito 9229/tcp 2>/dev/null | grep -q .; then
+            echo "Cognito backend must not publish raw HTTP port 9229 directly." >&2
+            exit 1
+          fi
+          docker port db-ui-gateway 9229/tcp | grep -Fq '9229'
+          echo "Cognito HTTPS gateway ownership of host port 9229: ok"
 
           echo "Cognito enable/disable/re-enable persistence test passed."
