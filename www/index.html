@@ -143,7 +143,7 @@
         <a class="card-content card-link" data-admin="cognito" target="_blank" rel="noopener noreferrer">
           <div class="card-top"><div class="icon">ID</div><span class="status" data-status>ENABLED</span></div>
           <h3>Cognito Local</h3><p class="role">Amazon Cognito User Pools emulator for local authentication, users, clients, and JWTs.</p>
-          <div class="meta"><div class="meta-row"><b>HTTPS API</b><code data-endpoint="cognito"></code></div><div class="meta-row"><b>User Pools UI</b><code data-admin-text="cognito"></code></div></div>
+          <div class="meta"><div class="meta-row"><b>User Pools API</b><code data-endpoint="cognito"></code></div><div class="meta-row"><b>User Pools UI</b><code data-admin-text="cognito"></code></div></div>
         </a>
       </article>
     </section>
@@ -197,7 +197,7 @@
       const cfg = window.CLOUD_SERVICES_CONFIG || {
         hostname: 'aws.home.arpa',
         services: { postgres: true, redis: true, neo4j: true, minio: true, elasticmq: true, cognito: true },
-        ports: { postgres: 5432, pgadmin: 5050, redis: 6379, redisinsight: 5540, neo4jHttp: 7474, neo4jBolt: 7687, minioApi: 9000, minioConsole: 9001, elasticmqApi: 9324, elasticmqUi: 9325, cognito: 9229 }
+        ports: { postgres: 5432, pgadmin: 5050, redis: 6379, redisinsight: 5540, neo4jHttp: 7474, neo4jBolt: 7687, minioApi: 9000, minioConsole: 9001, elasticmqApi: 9324, elasticmqUi: 9325, cognito: 9229, cognitoUi: 9230 }
       };
       const h = cfg.hostname;
       const p = cfg.ports;
@@ -207,7 +207,7 @@
         neo4j: `bolt://${h}:${p.neo4jBolt}`,
         minio: `http://${h}:${p.minioApi}`,
         elasticmq: `http://${h}:${p.elasticmqApi}`,
-        cognito: `https://${h}:${p.cognito}`
+        cognito: `http://${h}:${p.cognito}`
       };
       const admins = {
         postgres: `https://${h}:${p.pgadmin}`,
@@ -215,7 +215,7 @@
         neo4j: `https://${h}:${p.neo4jHttp}`,
         minio: `https://${h}:${p.minioConsole}`,
         elasticmq: `https://${h}:${p.elasticmqUi}`,
-        cognito: `https://${h}:${p.cognito}`
+        cognito: `https://${h}:${p.cognitoUi}`
       };
 
       document.title = `${h} · Local AWS Services`;
