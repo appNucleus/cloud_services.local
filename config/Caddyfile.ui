@@ -28,7 +28,7 @@ https://{$PLATFORM_HOSTNAME}:9325 {
     reverse_proxy elasticmq-ui:3000
 }
 
-https://{$PLATFORM_HOSTNAME}:9230 {
+https://{$PLATFORM_HOSTNAME}:{$COGNITO_UI_PORT} {
     tls internal
     root * /srv/cognito
     header Cache-Control "no-store"
