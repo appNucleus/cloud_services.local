@@ -78,7 +78,8 @@ With all logical services enabled:
 | MinIO Console | `https://aws.home.arpa:9001` |
 | ElasticMQ SQS API | `http://aws.home.arpa:9324` |
 | ElasticMQ UI | `https://aws.home.arpa:9325` |
-| Cognito Local User Pools API | `https://aws.home.arpa:9229` |
+| Cognito Local User Pools API | `http://aws.home.arpa:9229` |
+| Cognito Local UI | `https://aws.home.arpa:9230` |
 
 Containers on `db-local-net` should use Compose service names (`postgres`, `redis`, `neo4j`, `minio`, `elasticmq`, `cognito`) rather than hairpinning through the host.
 
@@ -102,7 +103,7 @@ aws.home.arpa {
 
 This host Caddy configuration is outside the repository and must be kept consistent with `PLATFORM_HOSTNAME`. LAN DNS must resolve `aws.home.arpa` to the server.
 
-The Compose `db-ui-gateway` independently publishes the browser/admin UIs with Caddy `tls internal` on ports `5050`, `5540`, `7474`, `9001`, and `9325` under the same `aws.home.arpa` hostname.
+The Compose `db-ui-gateway` independently publishes the browser/admin UIs with Caddy `tls internal` on ports `5050`, `5540`, `7474`, `9001`, `9325`, and `9230` under the same `aws.home.arpa` hostname.
 
 ## Cognito Local
 
@@ -112,7 +113,7 @@ The stack uses the pinned image:
 jagregory/cognito-local:5.3.0
 ```
 
-Cognito Local is a development emulator for **Amazon Cognito User Pools**, not a complete Cognito/Identity Pools implementation. The Compose UI gateway provides a small browser landing/User Pools page at `https://aws.home.arpa:9229/` and proxies Cognito API requests on the same HTTPS origin.
+Cognito Local is a development emulator for **Amazon Cognito User Pools**, not a complete Cognito/Identity Pools implementation. The API remains a direct local service at `http://aws.home.arpa:9229`. A separate lightweight browser UI is served over internal TLS at `https://aws.home.arpa:9230`; the UI does not proxy Cognito API traffic.
 
 Persistent state is stored in:
 
@@ -123,7 +124,7 @@ db-cognito-data
 Deployment generates Cognito Local configuration and synchronizes it into the preserved external named volume before startup; Cognito can then update its own writable config while user-pool data remains persistent. The configured token issuer is:
 
 ```text
-https://aws.home.arpa:9229
+http://aws.home.arpa:9229
 ```
 
 The smoke test calls the User Pools `ListUserPools` API rather than relying only on an open TCP port.
@@ -242,7 +243,7 @@ REDIS_URL=redis://:change_me_redis_2026@127.0.0.1:6379/0
 NEO4J_URI=bolt://127.0.0.1:7687
 S3_ENDPOINT_URL=http://127.0.0.1:9000
 SQS_ENDPOINT_URL=http://127.0.0.1:9324
-COGNITO_ENDPOINT_URL=https://aws.home.arpa:9229
+COGNITO_ENDPOINT_URL=http://127.0.0.1:9229
 ```
 
 LAN:
@@ -253,7 +254,7 @@ REDIS_URL=redis://:change_me_redis_2026@aws.home.arpa:6379/0
 NEO4J_URI=bolt://aws.home.arpa:7687
 S3_ENDPOINT_URL=http://aws.home.arpa:9000
 SQS_ENDPOINT_URL=http://aws.home.arpa:9324
-COGNITO_ENDPOINT_URL=https://aws.home.arpa:9229
+COGNITO_ENDPOINT_URL=http://aws.home.arpa:9229
 ```
 
 ## Security and resource model
