@@ -19,6 +19,7 @@ window.CLOUD_SERVICES_CONFIG = Object.freeze({
     minioConsole: 9001,
     elasticmqApi: 9324,
     elasticmqUi: 9325,
-    cognito: 9229
+    cognito: 9229,
+    cognitoUi: 9230
   })
 });
