@@ -15,6 +15,9 @@ cat > "$output" <<EOF_JSON
     "hostname": "0.0.0.0",
     "port": 9229
   },
+  "UserPoolDefaults": {
+    "UsernameAttributes": []
+  },
   "TokenConfig": {
     "IssuerDomain": "http://${PLATFORM_HOSTNAME:-aws.home.arpa}:${COGNITO_PORT:-9229}"
   }
