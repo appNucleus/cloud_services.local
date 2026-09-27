@@ -3,55 +3,374 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cognito Local · aws.home.arpa</title>
+  <title>Cognito Local Console · aws.home.arpa</title>
   <style>
-    :root { --bg:#0b1220; --panel:#0f172a; --border:rgba(148,163,184,.18); --text:#e5e7eb; --muted:#94a3b8; --blue:#93c5fd; --ok:#6ee7b7; --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace; --sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-    * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; color:var(--text); font-family:var(--sans); background:radial-gradient(circle at 12% 10%,rgba(59,130,246,.24),transparent 30%),radial-gradient(circle at 86% 6%,rgba(34,211,238,.14),transparent 28%),var(--bg); }
-    main { width:min(900px,calc(100% - 32px)); margin:0 auto; padding:36px 0 48px; }
-    .hero,.panel { border:1px solid var(--border); border-radius:22px; background:rgba(15,23,42,.82); box-shadow:0 20px 60px rgba(0,0,0,.24); }
-    .hero { padding:28px; }
-    .eyebrow { display:inline-flex; align-items:center; gap:8px; border:1px solid rgba(52,211,153,.25); background:rgba(16,185,129,.08); color:var(--ok); border-radius:999px; padding:7px 10px; font:700 12px var(--mono); }
-    h1 { margin:16px 0 8px; font-size:clamp(34px,6vw,54px); letter-spacing:-.045em; }
-    p { color:var(--muted); line-height:1.6; }
-    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:20px; }
-    .panel { padding:18px; }
-    .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
-    code { color:var(--blue); font-family:var(--mono); word-break:break-all; }
-    .value { font-weight:700; }
-    .note { margin-top:18px; padding:16px 18px; border:1px solid var(--border); border-radius:16px; background:rgba(15,23,42,.58); color:var(--muted); line-height:1.6; }
-    a { color:var(--blue); text-underline-offset:2px; }
-    @media(max-width:700px){ .grid{grid-template-columns:1fr;} }
+    :root {
+      --bg:#09111f; --panel:#0f172a; --panel2:#111c31; --border:rgba(148,163,184,.18);
+      --text:#e5e7eb; --muted:#94a3b8; --blue:#93c5fd; --ok:#6ee7b7; --bad:#fda4af;
+      --warn:#fde68a; --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
+      --sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;color:var(--text);font-family:var(--sans);background:
+      radial-gradient(circle at 10% 0%,rgba(59,130,246,.22),transparent 30%),
+      radial-gradient(circle at 95% 0%,rgba(34,211,238,.12),transparent 28%),var(--bg)}
+    .shell{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:28px 0 48px}
+    .hero,.panel{border:1px solid var(--border);background:rgba(15,23,42,.82);box-shadow:0 18px 55px rgba(0,0,0,.22)}
+    .hero{border-radius:24px;padding:26px 28px}
+    .hero-top,.toolbar,.row-between{display:flex;align-items:center;justify-content:space-between;gap:14px}
+    .eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(52,211,153,.25);background:rgba(16,185,129,.08);color:var(--ok);border-radius:999px;padding:7px 10px;font:700 12px var(--mono)}
+    h1{margin:14px 0 6px;font-size:clamp(32px,5vw,48px);letter-spacing:-.04em}
+    h2{margin:0;font-size:19px} h3{margin:0 0 8px;font-size:16px}
+    p{color:var(--muted);line-height:1.55;margin:0}
+    code{color:var(--blue);font-family:var(--mono);font-size:12px;word-break:break-all}
+    .summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}
+    .summary .panel{border-radius:16px;padding:14px 16px}
+    .label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+    .grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:18px;margin-top:18px}
+    .panel{border-radius:20px;padding:18px}
+    .toolbar{margin-bottom:14px}
+    .status{font:700 12px var(--mono);padding:6px 9px;border-radius:999px;border:1px solid var(--border);color:var(--muted)}
+    .status.ok{color:var(--ok);border-color:rgba(52,211,153,.25);background:rgba(16,185,129,.08)}
+    .status.bad{color:var(--bad);border-color:rgba(251,113,133,.25);background:rgba(244,63,94,.08)}
+    button,input,select{font:inherit}
+    button{border:1px solid rgba(96,165,250,.32);background:rgba(59,130,246,.12);color:#bfdbfe;border-radius:10px;padding:9px 12px;font-weight:700;cursor:pointer}
+    button:hover{background:rgba(59,130,246,.20)}
+    button.danger{border-color:rgba(251,113,133,.28);background:rgba(244,63,94,.08);color:#fecdd3}
+    button.ghost{background:transparent;border-color:var(--border);color:var(--muted)}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    input,select{width:100%;border:1px solid var(--border);background:#0b1426;color:var(--text);border-radius:10px;padding:10px 11px;outline:none}
+    input:focus,select:focus{border-color:rgba(96,165,250,.55)}
+    .form{display:grid;gap:10px}.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .field label{display:block;color:var(--muted);font-size:12px;margin:0 0 5px}
+    .pool-list{display:grid;gap:8px;margin-top:12px}
+    .pool{width:100%;text-align:left;padding:12px;border:1px solid var(--border);border-radius:12px;background:#0b1426;color:var(--text)}
+    .pool.active{border-color:rgba(96,165,250,.55);background:rgba(59,130,246,.10)}
+    .pool small{display:block;color:var(--muted);margin-top:4px;font-family:var(--mono);font-size:11px}
+    .empty{padding:24px 4px;text-align:center;color:var(--muted)}
+    .users{overflow:auto;border:1px solid var(--border);border-radius:14px}
+    table{width:100%;border-collapse:collapse;min-width:680px}
+    th,td{padding:11px 12px;text-align:left;border-bottom:1px solid rgba(148,163,184,.11);font-size:13px}
+    th{color:#cbd5e1;font-size:11px;text-transform:uppercase;letter-spacing:.08em;background:rgba(15,23,42,.75)}
+    td{color:var(--muted)} td strong{color:var(--text)}
+    tr:last-child td{border-bottom:0}
+    .actions{display:flex;gap:7px;flex-wrap:wrap}
+    .actions button{padding:7px 9px;font-size:12px}
+    .notice{margin-top:18px;padding:13px 15px;border:1px solid var(--border);border-radius:14px;color:var(--muted);font-size:13px;line-height:1.5}
+    .notice.error{color:var(--bad);border-color:rgba(251,113,133,.25);background:rgba(244,63,94,.07)}
+    .notice.success{color:var(--ok);border-color:rgba(52,211,153,.25);background:rgba(16,185,129,.07)}
+    .footer{margin-top:18px;color:var(--muted);font-size:12px}.footer a{color:var(--blue)}
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.72);padding:18px;z-index:20}
+    .modal.open{display:flex}.modal-card{width:min(520px,100%);border:1px solid var(--border);background:#0f172a;border-radius:20px;padding:20px;box-shadow:0 24px 80px rgba(0,0,0,.45)}
+    .modal-card .toolbar{margin-bottom:16px}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}.summary{grid-template-columns:1fr}.hero-top{align-items:flex-start;flex-direction:column}}
+    @media(max-width:620px){.form-row{grid-template-columns:1fr}.shell{width:min(100% - 20px,1180px);padding-top:14px}.hero{padding:20px}}
   </style>
 </head>
 <body>
-<main>
+<div class="shell">
   <section class="hero">
-    <div class="eyebrow">LOCAL COGNITO USER POOLS</div>
-    <h1>Cognito Local</h1>
-    <p>This is the browser landing page for the local Cognito User Pools emulator. The UI and API are intentionally kept on separate ports.</p>
-    <div class="grid">
-      <div class="panel"><div class="label">User Pools API</div><code id="api"></code></div>
-      <div class="panel"><div class="label">Browser UI</div><code id="ui"></code></div>
-      <div class="panel"><div class="label">Token issuer</div><code id="issuer"></code></div>
-      <div class="panel"><div class="label">Scope</div><div class="value">Amazon Cognito User Pools emulator</div></div>
+    <div class="hero-top">
+      <div>
+        <div class="eyebrow">LOCAL COGNITO USER POOLS</div>
+        <h1>Cognito Local Console</h1>
+        <p>Simple local management for User Pools and users. The browser console is separate from the Cognito Local API.</p>
+      </div>
+      <span id="health" class="status">CHECKING</span>
+    </div>
+    <div class="summary">
+      <div class="panel"><div class="label">User Pools API</div><code id="apiEndpoint"></code></div>
+      <div class="panel"><div class="label">Management UI</div><code id="uiEndpoint"></code></div>
+      <div class="panel"><div class="label">Selected Pool</div><code id="selectedPoolSummary">none</code></div>
     </div>
   </section>
 
-  <div class="note">
-    Use AWS SDK/CLI clients with the <strong>User Pools API</strong> endpoint shown above.
-    This lightweight page is only the local browser UI; it does not proxy API traffic.
-    Cognito Local is intended for development and does not provide full Cognito Identity Pools parity.
-    <br><br><a href="https://aws.home.arpa/">Back to the local AWS services dashboard</a>
+  <div class="grid">
+    <aside class="panel">
+      <div class="toolbar"><h2>User Pools</h2><button id="newPoolBtn">New pool</button></div>
+      <div id="poolList" class="pool-list"></div>
+      <div id="poolEmpty" class="empty" hidden>No user pools yet.</div>
+    </aside>
+
+    <main class="panel">
+      <div class="toolbar">
+        <div>
+          <h2 id="poolTitle">Select a User Pool</h2>
+          <code id="poolId"></code>
+        </div>
+        <div class="actions">
+          <button id="refreshBtn" class="ghost" disabled>Refresh</button>
+          <button id="newUserBtn" disabled>New user</button>
+          <button id="deletePoolBtn" class="danger" disabled>Delete pool</button>
+        </div>
+      </div>
+      <div id="usersEmpty" class="empty">Choose a User Pool to manage its users.</div>
+      <div id="usersWrap" class="users" hidden>
+        <table>
+          <thead><tr><th>Username</th><th>Email</th><th>Status</th><th>Enabled</th><th>Created</th><th>Actions</th></tr></thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+      </div>
+    </main>
   </div>
-</main>
+
+  <div id="notice" class="notice">Port <code>9229</code> is the Cognito-compatible API for SDK/CLI calls; it is not a browser application. Use this HTTPS console on port <code>9230</code> for local user management.</div>
+  <div class="footer"><a href="https://aws.home.arpa/">Back to the local AWS services dashboard</a></div>
+</div>
+
+<div id="poolModal" class="modal" role="dialog" aria-modal="true">
+  <div class="modal-card">
+    <div class="toolbar"><h2>Create User Pool</h2><button class="ghost" data-close="poolModal">Close</button></div>
+    <form id="poolForm" class="form">
+      <div class="field"><label for="poolName">Pool name</label><input id="poolName" autocomplete="off" required placeholder="LocalAppUsers"></div>
+      <button type="submit">Create pool</button>
+    </form>
+  </div>
+</div>
+
+<div id="userModal" class="modal" role="dialog" aria-modal="true">
+  <div class="modal-card">
+    <div class="toolbar"><h2>Create User</h2><button class="ghost" data-close="userModal">Close</button></div>
+    <form id="userForm" class="form">
+      <div class="form-row">
+        <div class="field"><label for="username">Username</label><input id="username" autocomplete="off" required placeholder="user@example.com"></div>
+        <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="off" placeholder="user@example.com"></div>
+      </div>
+      <div class="field"><label for="password">Password</label><input id="password" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters"></div>
+      <label style="display:flex;gap:8px;align-items:center;color:var(--muted);font-size:13px"><input id="permanent" type="checkbox" checked style="width:auto"> Set password as permanent</label>
+      <button type="submit">Create user</button>
+    </form>
+  </div>
+</div>
+
 <script>
 (() => {
-  const host = location.hostname;
-  const api = `http://${host}:9229`;
-  document.getElementById('api').textContent = api;
-  document.getElementById('ui').textContent = location.origin;
-  document.getElementById('issuer').textContent = api;
+  const state = { pools: [], selectedPool: null, users: [] };
+  const $ = id => document.getElementById(id);
+  const apiEndpoint = `http://${location.hostname}:9229`;
+  $("apiEndpoint").textContent = apiEndpoint;
+  $("uiEndpoint").textContent = location.origin;
+
+  async function request(url, options = {}) {
+    const response = await fetch(url, {
+      ...options,
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) }
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || `HTTP ${response.status}`);
+    return data;
+  }
+
+  function notice(message, kind = "") {
+    const el = $("notice");
+    el.className = "notice" + (kind ? " " + kind : "");
+    el.textContent = message;
+  }
+
+  function setHealth(ok) {
+    const el = $("health");
+    el.textContent = ok ? "API READY" : "API ERROR";
+    el.className = "status " + (ok ? "ok" : "bad");
+  }
+
+  function openModal(id) { $(id).classList.add("open"); }
+  function closeModal(id) { $(id).classList.remove("open"); }
+  document.querySelectorAll("[data-close]").forEach(btn => btn.addEventListener("click", () => closeModal(btn.dataset.close)));
+  document.querySelectorAll(".modal").forEach(modal => modal.addEventListener("click", e => { if (e.target === modal) closeModal(modal.id); }));
+
+  function attr(user, name) {
+    const item = (user.Attributes || []).find(x => x.Name === name);
+    return item ? item.Value : "—";
+  }
+
+  function renderPools() {
+    const list = $("poolList");
+    list.textContent = "";
+    $("poolEmpty").hidden = state.pools.length !== 0;
+
+    for (const pool of state.pools) {
+      const button = document.createElement("button");
+      button.className = "pool" + (state.selectedPool && state.selectedPool.Id === pool.Id ? " active" : "");
+      const title = document.createElement("strong");
+      title.textContent = pool.Name || "Unnamed pool";
+      const id = document.createElement("small");
+      id.textContent = pool.Id;
+      button.append(title, id);
+      button.addEventListener("click", () => selectPool(pool));
+      list.appendChild(button);
+    }
+  }
+
+  function renderUsers() {
+    const body = $("usersBody");
+    body.textContent = "";
+    $("usersWrap").hidden = state.users.length === 0;
+    $("usersEmpty").hidden = state.users.length !== 0;
+    if (!state.selectedPool) {
+      $("usersEmpty").textContent = "Choose a User Pool to manage its users.";
+      return;
+    }
+    if (!state.users.length) {
+      $("usersEmpty").textContent = "No users in this pool yet.";
+      return;
+    }
+
+    for (const user of state.users) {
+      const tr = document.createElement("tr");
+      const values = [
+        user.Username || "—",
+        attr(user, "email"),
+        user.UserStatus || "—",
+        user.Enabled === false ? "No" : "Yes",
+        user.UserCreateDate ? new Date(user.UserCreateDate).toLocaleString() : "—"
+      ];
+      for (let i = 0; i < values.length; i++) {
+        const td = document.createElement("td");
+        if (i === 0) {
+          const strong = document.createElement("strong");
+          strong.textContent = values[i];
+          td.appendChild(strong);
+        } else td.textContent = values[i];
+        tr.appendChild(td);
+      }
+
+      const actions = document.createElement("td");
+      actions.className = "actions";
+      const password = document.createElement("button");
+      password.className = "ghost";
+      password.textContent = "Set password";
+      password.addEventListener("click", () => setPassword(user.Username));
+      const del = document.createElement("button");
+      del.className = "danger";
+      del.textContent = "Delete";
+      del.addEventListener("click", () => deleteUser(user.Username));
+      actions.append(password, del);
+      tr.appendChild(actions);
+      body.appendChild(tr);
+    }
+  }
+
+  async function loadPools(preferId = null) {
+    try {
+      const data = await request("/api/pools");
+      state.pools = data.UserPools || [];
+      setHealth(true);
+
+      if (preferId) state.selectedPool = state.pools.find(p => p.Id === preferId) || null;
+      else if (state.selectedPool) state.selectedPool = state.pools.find(p => p.Id === state.selectedPool.Id) || null;
+      else state.selectedPool = state.pools[0] || null;
+
+      renderPools();
+      if (state.selectedPool) await selectPool(state.selectedPool, false);
+      else {
+        $("poolTitle").textContent = "Select a User Pool";
+        $("poolId").textContent = "";
+        $("selectedPoolSummary").textContent = "none";
+        $("refreshBtn").disabled = true;
+        $("newUserBtn").disabled = true;
+        $("deletePoolBtn").disabled = true;
+        state.users = [];
+        renderUsers();
+      }
+    } catch (err) {
+      setHealth(false);
+      notice(err.message, "error");
+    }
+  }
+
+  async function selectPool(pool, rerender = true) {
+    state.selectedPool = pool;
+    $("poolTitle").textContent = pool.Name || "User Pool";
+    $("poolId").textContent = pool.Id;
+    $("selectedPoolSummary").textContent = pool.Id;
+    $("refreshBtn").disabled = false;
+    $("newUserBtn").disabled = false;
+    $("deletePoolBtn").disabled = false;
+    if (rerender) renderPools();
+
+    try {
+      const data = await request(`/api/pools/${encodeURIComponent(pool.Id)}/users`);
+      state.users = data.Users || [];
+      renderUsers();
+    } catch (err) {
+      state.users = [];
+      renderUsers();
+      notice(err.message, "error");
+    }
+  }
+
+  $("newPoolBtn").addEventListener("click", () => { $("poolForm").reset(); openModal("poolModal"); });
+  $("newUserBtn").addEventListener("click", () => {
+    $("userForm").reset();
+    $("permanent").checked = true;
+    if (state.selectedPool) openModal("userModal");
+  });
+  $("refreshBtn").addEventListener("click", () => state.selectedPool && selectPool(state.selectedPool));
+
+  $("poolForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    try {
+      const result = await request("/api/pools", { method:"POST", body:JSON.stringify({ name:$("poolName").value }) });
+      closeModal("poolModal");
+      const id = result.UserPool && result.UserPool.Id;
+      notice("User Pool created.", "success");
+      await loadPools(id);
+    } catch (err) { notice(err.message, "error"); }
+  });
+
+  $("userForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!state.selectedPool) return;
+    try {
+      await request(`/api/pools/${encodeURIComponent(state.selectedPool.Id)}/users`, {
+        method:"POST",
+        body:JSON.stringify({
+          username:$("username").value,
+          email:$("email").value,
+          password:$("password").value,
+          permanent:$("permanent").checked
+        })
+      });
+      closeModal("userModal");
+      notice("User created.", "success");
+      await selectPool(state.selectedPool);
+    } catch (err) { notice(err.message, "error"); }
+  });
+
+  async function deletePool() {
+    if (!state.selectedPool) return;
+    if (!confirm(`Delete User Pool "${state.selectedPool.Name}"? This removes the pool and its local users.`)) return;
+    try {
+      await request(`/api/pools/${encodeURIComponent(state.selectedPool.Id)}`, { method:"DELETE" });
+      notice("User Pool deleted.", "success");
+      state.selectedPool = null;
+      await loadPools();
+    } catch (err) { notice(err.message, "error"); }
+  }
+
+  async function deleteUser(username) {
+    if (!state.selectedPool || !confirm(`Delete user "${username}"?`)) return;
+    try {
+      await request(`/api/pools/${encodeURIComponent(state.selectedPool.Id)}/users/${encodeURIComponent(username)}`, { method:"DELETE" });
+      notice("User deleted.", "success");
+      await selectPool(state.selectedPool);
+    } catch (err) { notice(err.message, "error"); }
+  }
+
+  async function setPassword(username) {
+    if (!state.selectedPool) return;
+    const password = prompt(`New permanent password for ${username}:`);
+    if (!password) return;
+    try {
+      await request(`/api/pools/${encodeURIComponent(state.selectedPool.Id)}/users/${encodeURIComponent(username)}/password`, {
+        method:"POST", body:JSON.stringify({ password, permanent:true })
+      });
+      notice("Password updated.", "success");
+    } catch (err) { notice(err.message, "error"); }
+  }
+
+  $("deletePoolBtn").addEventListener("click", deletePool);
+  loadPools();
 })();
 </script>
 </body>
