@@ -7,13 +7,10 @@ ensure_runtime_env_file
 load_runtime_env
 
 source_dir="$(repo_path "${DASHBOARD_WWW_DIR:-./www}")"
-generated_dir="$(repo_path "${DASHBOARD_GENERATED_DIR:-./generated/dashboard}")"
-output="$(repo_path "${DASHBOARD_RUNTIME_CONFIG:-./generated/dashboard/runtime-config.js}")"
+output="$(repo_path "${DASHBOARD_RUNTIME_CONFIG:-./www/runtime-config.js}")"
 
 [[ -f "$source_dir/index.html" ]] || { echo "Dashboard source is missing: $source_dir/index.html" >&2; exit 1; }
-mkdir -p "$generated_dir"
-find "$generated_dir" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
-cp -a "$source_dir/." "$generated_dir/"
+mkdir -p "$(dirname "$output")"
 
 cat > "$output" <<EOF_JS
 window.CLOUD_SERVICES_CONFIG = Object.freeze({
@@ -43,5 +40,4 @@ window.CLOUD_SERVICES_CONFIG = Object.freeze({
 EOF_JS
 
 chmod 0644 "$output"
-echo "Generated dashboard bundle: $generated_dir"
 echo "Generated dashboard runtime state: $output"
