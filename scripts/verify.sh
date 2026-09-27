@@ -179,6 +179,38 @@ for service in postgres redis neo4j minio elasticmq cognito; do
 done
 echo "Dashboard configured-state metadata: ok"
 
+verify_host_caddy="${VERIFY_HOST_CADDY:-auto}"
+should_verify_host_caddy=false
+case "$verify_host_caddy" in
+  true) should_verify_host_caddy=true ;;
+  false) should_verify_host_caddy=false ;;
+  auto)
+    [[ -r /etc/caddy/Caddyfile ]] && should_verify_host_caddy=true
+    ;;
+esac
+
+if [[ "$should_verify_host_caddy" == "true" ]]; then
+  printf '\n===== Host Caddy dashboard route =====\n'
+  if [[ -r /etc/caddy/Caddyfile ]]; then
+    grep -Fq "${PLATFORM_HOSTNAME} {" /etc/caddy/Caddyfile || {
+      echo "Host Caddyfile does not contain the expected ${PLATFORM_HOSTNAME} site block." >&2
+      exit 1
+    }
+  fi
+  retry_http "dashboard through host Caddy" "https://${PLATFORM_HOSTNAME}/index.html" \
+    --insecure --resolve "${PLATFORM_HOSTNAME}:443:127.0.0.1"
+  host_runtime_state="$(curl -kfsS --connect-timeout 2 --max-time 5 \
+    --resolve "${PLATFORM_HOSTNAME}:443:127.0.0.1" \
+    "https://${PLATFORM_HOSTNAME}/runtime-config.js")"
+  [[ "$host_runtime_state" == *"hostname: \"${PLATFORM_HOSTNAME}\""* ]] || {
+    echo "Host-Caddy dashboard runtime hostname is not synchronized." >&2
+    exit 1
+  }
+  echo "Host Caddy dashboard route: ok (${PLATFORM_HOSTNAME})"
+else
+  echo "Host Caddy dashboard verification skipped (VERIFY_HOST_CADDY=${verify_host_caddy})."
+fi
+
 if service_enabled postgres; then
   printf '\n===== pgAdmin =====\n'
   retry_http "pgAdmin HTTPS gateway" "https://${PLATFORM_HOSTNAME}:${PGADMIN_PORT}/misc/ping" --insecure --resolve "${PLATFORM_HOSTNAME}:${PGADMIN_PORT}:127.0.0.1"
