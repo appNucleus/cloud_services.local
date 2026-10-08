@@ -65,8 +65,8 @@ fi
 
 if service_enabled opensearch; then
   initial_password="${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-}"
-  if (( ${#initial_password} < 12 )); then
-    echo "Refusing OpenSearch deployment: set a strong OPENSEARCH_INITIAL_ADMIN_PASSWORD (at least 12 characters) in runtime.env." >&2
+  if (( ${#initial_password} < 12 )) || ! [[ "$initial_password" =~ [[:upper:]] && "$initial_password" =~ [[:lower:]] && "$initial_password" =~ [[:digit:]] && "$initial_password" =~ [[:punct:]] ]]; then
+    echo "Refusing OpenSearch deployment: set a strong admin password (12+ characters with uppercase, lowercase, number, and special character)." >&2
     exit 1
   fi
 fi

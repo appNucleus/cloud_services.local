@@ -223,7 +223,7 @@ jobs:
           sudo sysctl -w vm.max_map_count=262144
           sed -i 's/^ENABLE_COGNITO=.*/ENABLE_COGNITO=false/' "$DEPLOY_ENV_FILE"
           sed -i 's/^ENABLE_OPENSEARCH=.*/ENABLE_OPENSEARCH=true/' "$DEPLOY_ENV_FILE"
-          sed -i "s/^OPENSEARCH_INITIAL_ADMIN_PASSWORD=.*/OPENSEARCH_INITIAL_ADMIN_PASSWORD=$(openssl rand -hex 24)/" "$DEPLOY_ENV_FILE"
+          sed -i "s/^OPENSEARCH_INITIAL_ADMIN_PASSWORD=.*/OPENSEARCH_INITIAL_ADMIN_PASSWORD=Opn-$(openssl rand -hex 24)-Aa9!/" "$DEPLOY_ENV_FILE"
           bash ./scripts/validate-runtime-env.sh
           bash ./scripts/start.sh --wait
           bash ./scripts/verify.sh
