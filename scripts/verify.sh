@@ -293,7 +293,7 @@ if service_enabled opensearch; then
   retry_http "OpenSearch authenticated search API" "https://127.0.0.1:${OPENSEARCH_PORT}/_cluster/health" \
     --insecure -u "admin:${OPENSEARCH_INITIAL_ADMIN_PASSWORD}"
   printf '\n===== OpenSearch Dashboards =====\n'
-  retry_http "OpenSearch Dashboards HTTPS gateway" "https://${PLATFORM_HOSTNAME}:${OPENSEARCH_DASHBOARDS_PORT}/api/status" \
+  retry_http "OpenSearch Dashboards HTTPS gateway" "https://${PLATFORM_HOSTNAME}:${OPENSEARCH_DASHBOARDS_PORT}/" \
     --insecure --resolve "${PLATFORM_HOSTNAME}:${OPENSEARCH_DASHBOARDS_PORT}:127.0.0.1"
 fi
 

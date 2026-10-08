@@ -369,12 +369,6 @@ services:
     depends_on:
       opensearch:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:5601/api/status',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
-      interval: 15s
-      timeout: 10s
-      retries: 20
-      start_period: 60s
     networks: [db_net]
 
   ui-gateway:
