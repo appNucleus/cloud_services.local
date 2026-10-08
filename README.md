@@ -10,7 +10,7 @@ aws.home.arpa
 
 ## Logical services
 
-Six logical services can be enabled or disabled independently from the persistent runtime environment:
+Seven logical services can be enabled or disabled independently from the persistent runtime environment:
 
 | Logical service | Containers | Local AWS target |
 |---|---|---|
@@ -20,6 +20,7 @@ Six logical services can be enabled or disabled independently from the persisten
 | MinIO | `db-minio`, temporary `db-minio-init` | S3 |
 | ElasticMQ | `db-elasticmq`, `db-elasticmq-ui` | SQS |
 | Cognito Local | `db-cognito`, `db-cognito-ui` | Cognito User Pools |
+| OpenSearch | `db-opensearch`, `db-opensearch-dashboards` | Amazon OpenSearch Service |
 
 Platform infrastructure is always enabled:
 
@@ -28,7 +29,7 @@ Platform infrastructure is always enabled:
 
 ## Service switches
 
-All six logical services are enabled by default:
+The original six logical services are enabled by default; OpenSearch is opt-in:
 
 ```env
 ENABLE_POSTGRES=true
@@ -37,13 +38,14 @@ ENABLE_NEO4J=true
 ENABLE_MINIO=true
 ENABLE_ELASTICMQ=true
 ENABLE_COGNITO=true
+ENABLE_OPENSEARCH=false
 ```
 
 Values must be exactly `true` or `false`. Invalid values fail deployment.
 
 Disabling a logical service removes its application/admin containers but **does not remove named Docker volumes**. Re-enabling the service later reuses the same persistent data. The dashboard continues to show every service and marks disabled services as `DISABLED`; their admin links are non-clickable.
 
-Docker Compose profiles are derived automatically from these six variables. Users should configure the `ENABLE_*` variables rather than setting `COMPOSE_PROFILES` manually.
+Docker Compose profiles are derived automatically from these seven variables. Users should configure the `ENABLE_*` variables rather than setting `COMPOSE_PROFILES` manually.
 
 ## Runtime environment
 
@@ -80,6 +82,8 @@ With all logical services enabled:
 | ElasticMQ UI | `https://aws.home.arpa:9325` |
 | Cognito Local User Pools API | `http://aws.home.arpa:9229` |
 | Cognito Local management UI | `https://aws.home.arpa:9230` |
+| OpenSearch REST API | `https://aws.home.arpa:9200` |
+| OpenSearch Dashboards | `https://aws.home.arpa:5601` |
 
 Containers on `db-local-net` should use Compose service names (`postgres`, `redis`, `neo4j`, `minio`, `elasticmq`, `cognito`) rather than hairpinning through the host.
 
@@ -135,6 +139,16 @@ The management console supports:
 
 The smoke test calls the User Pools `ListUserPools` API, verifies the HTTPS console backend can list pools, and validates the UI/API containers independently.
 
+## OpenSearch setup
+
+OpenSearch and matching Dashboards use pinned version `3.8.0` images, an independent Compose profile, persistent storage, and the existing HTTPS UI gateway and release workflow.
+
+1. Set Linux host `vm.max_map_count` to at least `262144` (for example, `sudo sysctl -w vm.max_map_count=262144`; persist it in `/etc/sysctl.d/`).
+2. Set a strong, unique `OPENSEARCH_INITIAL_ADMIN_PASSWORD` (at least 12 characters, also satisfying OpenSearch's own strength rules) and `ENABLE_OPENSEARCH=true` in `$HOME/.config/db.local/runtime.env`.
+3. Verify host RAM/disk headroom and LAN-only firewall rules for TCP ports `9200` and `5601`, then deploy normally.
+
+Search API: `https://aws.home.arpa:9200` (authenticated TLS). Dashboards: `https://aws.home.arpa:5601` (sign in as `admin` using the configured password). Development demo certificates require trust configuration or `curl -k` in local tests. The initial password seeds only new data volumes; editing `runtime.env` does not rotate an existing password. Replace demo users/certificates before production use. Managed IAM, autoscaling, and AWS-specific features are not replicated.
+
 ## Deployment model
 
 Release workflow:
@@ -185,7 +199,7 @@ Rollback restores the previous source tree and previous `runtime.env`. It never 
 The generated state contains only:
 
 - `PLATFORM_HOSTNAME`
-- six enabled/disabled booleans
+- seven enabled/disabled booleans
 - service port numbers
 
 Credentials are never exposed to the browser.
@@ -250,6 +264,7 @@ NEO4J_URI=bolt://127.0.0.1:7687
 S3_ENDPOINT_URL=http://127.0.0.1:9000
 SQS_ENDPOINT_URL=http://127.0.0.1:9324
 COGNITO_ENDPOINT_URL=http://127.0.0.1:9229
+OPENSEARCH_ENDPOINT_URL=https://127.0.0.1:9200
 ```
 
 LAN:
@@ -261,6 +276,7 @@ NEO4J_URI=bolt://aws.home.arpa:7687
 S3_ENDPOINT_URL=http://aws.home.arpa:9000
 SQS_ENDPOINT_URL=http://aws.home.arpa:9324
 COGNITO_ENDPOINT_URL=http://aws.home.arpa:9229
+OPENSEARCH_ENDPOINT_URL=https://aws.home.arpa:9200
 ```
 
 ## Security and resource model

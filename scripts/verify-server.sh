@@ -39,6 +39,14 @@ elif (( free_gib < warn_free_gib )); then
   echo "::warning::Low disk headroom: ${free_gib} GiB free (warning threshold ${warn_free_gib} GiB)."
 fi
 
+if [[ "${ENABLE_OPENSEARCH:-false}" == "true" ]]; then
+  map_count="$(cat /proc/sys/vm/max_map_count 2>/dev/null || echo 0)"
+  if (( map_count < 262144 )); then
+    echo "OpenSearch requires vm.max_map_count >= 262144 (currently $map_count); configure the host before deploying." >&2
+    exit 1
+  fi
+fi
+
 echo "Docker Engine:  OK"
 echo "Docker Compose: OK ($compose_version)"
 echo "Docker access:  OK"

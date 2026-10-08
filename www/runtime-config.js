@@ -6,7 +6,8 @@ window.CLOUD_SERVICES_CONFIG = Object.freeze({
     neo4j: true,
     minio: true,
     elasticmq: true,
-    cognito: true
+    cognito: true,
+    opensearch: false
   }),
   ports: Object.freeze({
     postgres: 5432,
@@ -20,6 +21,8 @@ window.CLOUD_SERVICES_CONFIG = Object.freeze({
     elasticmqApi: 9324,
     elasticmqUi: 9325,
     cognito: 9229,
-    cognitoUi: 9230
+    cognitoUi: 9230,
+    opensearch: 9200,
+    opensearchDashboards: 5601
   })
 });

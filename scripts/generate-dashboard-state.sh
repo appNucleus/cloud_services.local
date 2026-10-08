@@ -21,7 +21,8 @@ window.CLOUD_SERVICES_CONFIG = Object.freeze({
     neo4j: ${ENABLE_NEO4J:-true},
     minio: ${ENABLE_MINIO:-true},
     elasticmq: ${ENABLE_ELASTICMQ:-true},
-    cognito: ${ENABLE_COGNITO:-true}
+    cognito: ${ENABLE_COGNITO:-true},
+    opensearch: ${ENABLE_OPENSEARCH:-false}
   }),
   ports: Object.freeze({
     postgres: ${POSTGRES_PORT:-5432},
@@ -35,7 +36,9 @@ window.CLOUD_SERVICES_CONFIG = Object.freeze({
     elasticmqApi: ${ELASTICMQ_PORT:-9324},
     elasticmqUi: ${ELASTICMQ_UI_PORT:-9325},
     cognito: ${COGNITO_PORT:-9229},
-    cognitoUi: ${COGNITO_UI_PORT:-9230}
+    cognitoUi: ${COGNITO_UI_PORT:-9230},
+    opensearch: ${OPENSEARCH_PORT:-9200},
+    opensearchDashboards: ${OPENSEARCH_DASHBOARDS_PORT:-5601}
   })
 });
 EOF_JS

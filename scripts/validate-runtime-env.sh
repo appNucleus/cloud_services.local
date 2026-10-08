@@ -15,7 +15,7 @@ validate_bool() {
   esac
 }
 
-for key in ENABLE_POSTGRES ENABLE_REDIS ENABLE_NEO4J ENABLE_MINIO ENABLE_ELASTICMQ ENABLE_COGNITO RUN_MINIO_INIT; do
+for key in ENABLE_POSTGRES ENABLE_REDIS ENABLE_NEO4J ENABLE_MINIO ENABLE_ELASTICMQ ENABLE_COGNITO ENABLE_OPENSEARCH RUN_MINIO_INIT; do
   validate_bool "$key"
 done
 
@@ -61,6 +61,14 @@ done
 
 if (( placeholder_count > 0 )); then
   echo "::warning::$placeholder_count runtime credential(s) still use local-development placeholders. Deployment is allowed for backward compatibility; replace them when convenient."
+fi
+
+if service_enabled opensearch; then
+  initial_password="${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-}"
+  if (( ${#initial_password} < 12 )); then
+    echo "Refusing OpenSearch deployment: set a strong OPENSEARCH_INITIAL_ADMIN_PASSWORD (at least 12 characters) in runtime.env." >&2
+    exit 1
+  fi
 fi
 
 configure_service_selection

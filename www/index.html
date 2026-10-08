@@ -92,7 +92,7 @@
         <div>
           <div class="eyebrow"><span class="pulse"></span> Local AWS-Compatible Platform</div>
           <h1 data-host>aws.home.arpa</h1>
-          <p class="subtitle">Six independently configurable local services for application development: PostgreSQL + pgvector, Redis, Neo4j, MinIO, ElasticMQ, and Cognito Local.</p>
+          <p class="subtitle">Seven independently configurable local services for LLM applications: PostgreSQL + pgvector, OpenSearch, Neo4j, Redis, MinIO, ElasticMQ, and Cognito Local.</p>
         </div>
         <div class="hero-actions">
           <div class="pill">host · <span data-host>aws.home.arpa</span></div>
@@ -111,11 +111,11 @@
           <div class="meta"><div class="meta-row"><b>Database</b><code data-endpoint="postgres"></code></div><div class="meta-row"><b>pgAdmin</b><code data-admin-text="postgres"></code></div></div>
         </a>
       </article>
-      <article class="card" data-service="redis">
-        <a class="card-content card-link" data-admin="redis" target="_blank" rel="noopener noreferrer">
-          <div class="card-top"><div class="icon">RD</div><span class="status" data-status>ENABLED</span></div>
-          <h3>Redis</h3><p class="role">Cache, locks, rate limits, transient state, and fast application coordination.</p>
-          <div class="meta"><div class="meta-row"><b>Redis</b><code data-endpoint="redis"></code></div><div class="meta-row"><b>RedisInsight</b><code data-admin-text="redis"></code></div></div>
+      <article class="card" data-service="opensearch">
+        <a class="card-content card-link" data-admin="opensearch" target="_blank" rel="noopener noreferrer">
+          <div class="card-top"><div class="icon">OS</div><span class="status" data-status>DISABLED</span></div>
+          <h3>OpenSearch</h3><p class="role">Keyword/vector retrieval, search indexing, and LLM analytics.</p>
+          <div class="meta"><div class="meta-row"><b>Search API</b><code data-endpoint="opensearch"></code></div><div class="meta-row"><b>Dashboards</b><code data-admin-text="opensearch"></code></div></div>
         </a>
       </article>
       <article class="card" data-service="neo4j">
@@ -123,6 +123,13 @@
           <div class="card-top"><div class="icon">N4</div><span class="status" data-status>ENABLED</span></div>
           <h3>Neo4j</h3><p class="role">Knowledge graphs, concept relationships, graph traversal, and GraphRAG.</p>
           <div class="meta"><div class="meta-row"><b>Bolt</b><code data-endpoint="neo4j"></code></div><div class="meta-row"><b>Browser</b><code data-admin-text="neo4j"></code></div></div>
+        </a>
+      </article>
+      <article class="card" data-service="redis">
+        <a class="card-content card-link" data-admin="redis" target="_blank" rel="noopener noreferrer">
+          <div class="card-top"><div class="icon">RD</div><span class="status" data-status>ENABLED</span></div>
+          <h3>Redis</h3><p class="role">Cache, locks, rate limits, transient state, and fast application coordination.</p>
+          <div class="meta"><div class="meta-row"><b>Redis</b><code data-endpoint="redis"></code></div><div class="meta-row"><b>RedisInsight</b><code data-admin-text="redis"></code></div></div>
         </a>
       </article>
       <article class="card" data-service="minio">
@@ -157,16 +164,22 @@
         <div class="compat-row"><strong>Compatibility</strong><span>PostgreSQL-compatible; pgvector-ready migration path</span></div>
       </article>
       <article class="compat">
-        <div class="compat-head"><div class="icon">RD</div><h3>Redis</h3></div>
-        <div class="compat-row"><strong>AWS target</strong><span>Amazon ElastiCache Serverless for Valkey / Redis OSS</span></div>
-        <div class="compat-row"><strong>Lower fixed</strong><span>Amazon ElastiCache node-based cache</span></div>
-        <div class="compat-row"><strong>Compatibility</strong><span>Redis-compatible client and command model; review version-specific commands</span></div>
+        <div class="compat-head"><div class="icon">OS</div><h3>OpenSearch</h3></div>
+        <div class="compat-row"><strong>AWS target</strong><span>Amazon OpenSearch Service</span></div>
+        <div class="compat-row"><strong>Local mode</strong><span>Single-node OpenSearch with Dashboards and security</span></div>
+        <div class="compat-row"><strong>Compatibility</strong><span>OpenSearch REST API; AWS IAM and managed operations differ</span></div>
       </article>
       <article class="compat">
         <div class="compat-head"><div class="icon">N4</div><h3>Neo4j</h3></div>
         <div class="compat-row"><strong>AWS target</strong><span>Amazon Neptune Serverless</span></div>
         <div class="compat-row"><strong>Closest Neo4j</strong><span>Neo4j Aura on AWS Marketplace</span></div>
         <div class="compat-row"><strong>Compatibility</strong><span>Graph-native migration path; query/schema semantics require review for Neptune</span></div>
+      </article>
+      <article class="compat">
+        <div class="compat-head"><div class="icon">RD</div><h3>Redis</h3></div>
+        <div class="compat-row"><strong>AWS target</strong><span>Amazon ElastiCache Serverless for Valkey / Redis OSS</span></div>
+        <div class="compat-row"><strong>Lower fixed</strong><span>Amazon ElastiCache node-based cache</span></div>
+        <div class="compat-row"><strong>Compatibility</strong><span>Redis-compatible client and command model; review version-specific commands</span></div>
       </article>
       <article class="compat">
         <div class="compat-head"><div class="icon">S3</div><h3>MinIO</h3></div>
@@ -196,8 +209,8 @@
       const renderDashboard = () => {
       const cfg = window.CLOUD_SERVICES_CONFIG || {
         hostname: 'aws.home.arpa',
-        services: { postgres: true, redis: true, neo4j: true, minio: true, elasticmq: true, cognito: true },
-        ports: { postgres: 5432, pgadmin: 5050, redis: 6379, redisinsight: 5540, neo4jHttp: 7474, neo4jBolt: 7687, minioApi: 9000, minioConsole: 9001, elasticmqApi: 9324, elasticmqUi: 9325, cognito: 9229, cognitoUi: 9230 }
+        services: { postgres: true, redis: true, neo4j: true, minio: true, elasticmq: true, cognito: true, opensearch: false },
+        ports: { postgres: 5432, pgadmin: 5050, redis: 6379, redisinsight: 5540, neo4jHttp: 7474, neo4jBolt: 7687, minioApi: 9000, minioConsole: 9001, elasticmqApi: 9324, elasticmqUi: 9325, cognito: 9229, cognitoUi: 9230, opensearch: 9200, opensearchDashboards: 5601 }
       };
       const h = cfg.hostname;
       const p = cfg.ports;
@@ -207,7 +220,8 @@
         neo4j: `bolt://${h}:${p.neo4jBolt}`,
         minio: `http://${h}:${p.minioApi}`,
         elasticmq: `http://${h}:${p.elasticmqApi}`,
-        cognito: `http://${h}:${p.cognito}`
+        cognito: `http://${h}:${p.cognito}`,
+        opensearch: `https://${h}:${p.opensearch}`
       };
       const admins = {
         postgres: `https://${h}:${p.pgadmin}`,
@@ -215,7 +229,8 @@
         neo4j: `https://${h}:${p.neo4jHttp}`,
         minio: `https://${h}:${p.minioConsole}`,
         elasticmq: `https://${h}:${p.elasticmqUi}`,
-        cognito: `https://${h}:${p.cognitoUi}`
+        cognito: `https://${h}:${p.cognitoUi}`,
+        opensearch: `https://${h}:${p.opensearchDashboards}`
       };
 
       document.title = `${h} · Local AWS Services`;

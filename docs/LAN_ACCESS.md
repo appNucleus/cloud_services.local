@@ -25,6 +25,8 @@ LAN DNS should resolve this hostname to the Docker host. Do not router-port-forw
 | ElasticMQ UI | `https://aws.home.arpa:9325` |
 | Cognito Local User Pools API | `http://aws.home.arpa:9229` |
 | Cognito Local management UI | `https://aws.home.arpa:9230` |
+| OpenSearch REST API | `https://aws.home.arpa:9200` |
+| OpenSearch Dashboards | `https://aws.home.arpa:5601` |
 
 Disabled logical services have no application container even though the shared UI gateway remains running.
 
@@ -52,6 +54,8 @@ sudo ufw allow from 192.168.1.0/24 to any port 9000 proto tcp comment 'MinIO S3 
 sudo ufw allow from 192.168.1.0/24 to any port 9324 proto tcp comment 'ElasticMQ SQS LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 9229 proto tcp comment 'Cognito Local API LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 9230 proto tcp comment 'Cognito Local UI HTTPS LAN only'
+sudo ufw allow from 192.168.1.0/24 to any port 9200 proto tcp comment 'OpenSearch HTTPS API LAN only'
+sudo ufw allow from 192.168.1.0/24 to any port 5601 proto tcp comment 'OpenSearch Dashboards HTTPS LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 5050 proto tcp comment 'pgAdmin HTTPS LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 5540 proto tcp comment 'RedisInsight HTTPS LAN only'
 sudo ufw allow from 192.168.1.0/24 to any port 7474 proto tcp comment 'Neo4j Browser HTTPS LAN only'
@@ -83,6 +87,8 @@ Test-NetConnection aws.home.arpa -Port 9000
 Test-NetConnection aws.home.arpa -Port 9324
 Test-NetConnection aws.home.arpa -Port 9229
 Test-NetConnection aws.home.arpa -Port 9230
+Test-NetConnection aws.home.arpa -Port 9200
+Test-NetConnection aws.home.arpa -Port 5601
 ```
 
 Port `8003` should not be reachable directly from another LAN machine.

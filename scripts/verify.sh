@@ -18,6 +18,8 @@ ELASTICMQ_CONTAINER_NAME="${ELASTICMQ_CONTAINER_NAME:-db-elasticmq}"
 ELASTICMQ_UI_CONTAINER_NAME="${ELASTICMQ_UI_CONTAINER_NAME:-db-elasticmq-ui}"
 COGNITO_CONTAINER_NAME="${COGNITO_CONTAINER_NAME:-db-cognito}"
 COGNITO_UI_CONTAINER_NAME="${COGNITO_UI_CONTAINER_NAME:-db-cognito-ui}"
+OPENSEARCH_CONTAINER_NAME="${OPENSEARCH_CONTAINER_NAME:-db-opensearch}"
+OPENSEARCH_DASHBOARDS_CONTAINER_NAME="${OPENSEARCH_DASHBOARDS_CONTAINER_NAME:-db-opensearch-dashboards}"
 MINIO_INIT_CONTAINER_NAME="${MINIO_INIT_CONTAINER_NAME:-db-minio-init}"
 PLATFORM_HOSTNAME="${PLATFORM_HOSTNAME:-aws.home.arpa}"
 
@@ -29,6 +31,8 @@ NEO4J_HTTP_PORT="${NEO4J_HTTP_PORT:-7474}"
 MINIO_CONSOLE_PORT="${MINIO_CONSOLE_PORT:-9001}"
 COGNITO_PORT="${COGNITO_PORT:-9229}"
 COGNITO_UI_PORT="${COGNITO_UI_PORT:-9230}"
+OPENSEARCH_PORT="${OPENSEARCH_PORT:-9200}"
+OPENSEARCH_DASHBOARDS_PORT="${OPENSEARCH_DASHBOARDS_PORT:-5601}"
 POSTGRES_USER="${POSTGRES_USER:-langgraph_user}"
 POSTGRES_DB="${POSTGRES_DB:-langgraph_app}"
 REDIS_PASSWORD="${REDIS_PASSWORD:-change_me_redis_2026}"
@@ -167,6 +171,13 @@ else
   verify_disabled_group "Cognito Local" "$COGNITO_CONTAINER_NAME" "$COGNITO_UI_CONTAINER_NAME"
 fi
 
+if service_enabled opensearch; then
+  assert_service_running opensearch
+  assert_service_running opensearch-dashboards
+else
+  verify_disabled_group "OpenSearch" "$OPENSEARCH_CONTAINER_NAME" "$OPENSEARCH_DASHBOARDS_CONTAINER_NAME"
+fi
+
 # The MinIO initializer is always one-shot and must not remain after startup.
 assert_container_absent "$MINIO_INIT_CONTAINER_NAME"
 echo "Container cardinality/state checks: ok"
@@ -175,7 +186,7 @@ printf '\n===== Dashboard =====\n'
 retry_http "dashboard" "http://${DASHBOARD_HOST_BIND}:${DASHBOARD_PORT}/index.html"
 runtime_state="$(curl -fsS --connect-timeout 2 --max-time 5 "http://${DASHBOARD_HOST_BIND}:${DASHBOARD_PORT}/runtime-config.js")"
 [[ "$runtime_state" == *"hostname: \"${PLATFORM_HOSTNAME}\""* ]] || { echo "Dashboard runtime hostname is not synchronized." >&2; exit 1; }
-for service in postgres redis neo4j minio elasticmq cognito; do
+for service in postgres redis neo4j minio elasticmq cognito opensearch; do
   expected=false
   service_enabled "$service" && expected=true
   [[ "$runtime_state" == *"${service}: ${expected}"* ]] || { echo "Dashboard runtime state mismatch for $service." >&2; exit 1; }
@@ -275,6 +286,15 @@ if service_enabled cognito; then
     exit 1
   }
   echo "Cognito Local issuer: ok ($issuer)"
+fi
+
+if service_enabled opensearch; then
+  printf '\n===== OpenSearch =====\n'
+  retry_http "OpenSearch authenticated search API" "https://127.0.0.1:${OPENSEARCH_PORT}/_cluster/health" \
+    --insecure -u "admin:${OPENSEARCH_INITIAL_ADMIN_PASSWORD}"
+  printf '\n===== OpenSearch Dashboards =====\n'
+  retry_http "OpenSearch Dashboards HTTPS gateway" "https://${PLATFORM_HOSTNAME}:${OPENSEARCH_DASHBOARDS_PORT}/api/status" \
+    --insecure --resolve "${PLATFORM_HOSTNAME}:${OPENSEARCH_DASHBOARDS_PORT}:127.0.0.1"
 fi
 
 printf '\nAll checks completed.\n'

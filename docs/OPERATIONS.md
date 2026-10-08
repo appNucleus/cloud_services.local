@@ -2,7 +2,7 @@
 
 ## Service selection
 
-Six logical services are controlled by `ENABLE_POSTGRES`, `ENABLE_REDIS`, `ENABLE_NEO4J`, `ENABLE_MINIO`, `ENABLE_ELASTICMQ`, and `ENABLE_COGNITO` in the persistent runtime environment. All default to `true`.
+Seven logical services are controlled by `ENABLE_POSTGRES`, `ENABLE_REDIS`, `ENABLE_NEO4J`, `ENABLE_MINIO`, `ENABLE_ELASTICMQ`, `ENABLE_COGNITO`, and `ENABLE_OPENSEARCH` in the persistent runtime environment. The original six default to `true`; OpenSearch is opt-in (`false` by default).
 
 Changing a value from `true` to `false` causes deployment to remove that logical service's containers while preserving named volumes. Re-enabling later reuses the data. The dashboard and UI gateway remain running.
 
@@ -18,6 +18,8 @@ Canonical hostname: `aws.home.arpa`.
 - ElasticMQ UI: `https://aws.home.arpa:9325`
 - Cognito Local API: `http://aws.home.arpa:9229`
 - Cognito Local management UI: `https://aws.home.arpa:9230`
+- OpenSearch API: `https://aws.home.arpa:9200` (authenticated HTTPS)
+- OpenSearch Dashboards: `https://aws.home.arpa:5601`
 
 Host Caddy publishes the dashboard from `127.0.0.1:8003`. The Compose UI gateway provides the service-specific HTTPS ports.
 
@@ -28,6 +30,7 @@ Host Caddy publishes the dashboard from `127.0.0.1:8003`. The Compose UI gateway
 - enabled service: exactly one running container plus protocol/API readiness
 - disabled service: application/admin containers must be absent
 - dashboard runtime metadata must match `runtime.env`
+- OpenSearch authenticated cluster health and Dashboards gateway readiness when enabled
 - Cognito Local API must answer `ListUserPools`; the `db-cognito-ui` console must be healthy, render on HTTPS port `9230`, and successfully list User Pools through its server-side management endpoint; the API issuer must remain `http://aws.home.arpa:9229`
 
 ## Storage safety and rollback

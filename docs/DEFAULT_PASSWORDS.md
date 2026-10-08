@@ -14,7 +14,11 @@
 | 10 | ElasticMQ UI | `https://aws.home.arpa:9325` | No app login | No app password |
 | 11 | Cognito Local User Pools API | `http://aws.home.arpa:9229` | Managed in user pools | Managed in user pools |
 | 12 | Cognito Local management UI | `https://aws.home.arpa:9230` | No separate UI login | No separate UI password |
+| 13 | OpenSearch REST API | `https://aws.home.arpa:9200` | `admin` | Private `OPENSEARCH_INITIAL_ADMIN_PASSWORD` |
+| 14 | OpenSearch Dashboards | `https://aws.home.arpa:5601` | `admin` | Same OpenSearch admin password |
 
 Dashboard: `https://aws.home.arpa`
 
 The `change_me_*` values are local-development placeholders. Deployment currently warns about enabled-service placeholders for backward compatibility; use custom values for serious use. PostgreSQL and Neo4j credentials can be initialized into persistent volumes, so changing only `runtime.env` later does not necessarily change existing database credentials.
+
+OpenSearch defaults to disabled. Before enabling it, set a strong initial password and `vm.max_map_count=262144`. The password initializes only a new data volume; modifying `runtime.env` does not rotate it. Demo users/certificates are for local development, not production. See [OpenSearch setup](../README.md#opensearch-setup).

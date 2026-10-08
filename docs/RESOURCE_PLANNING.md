@@ -1,6 +1,6 @@
 # Resource planning
 
-With all six logical services enabled, expected long-running containers are:
+With all seven logical services enabled, expected long-running containers are:
 
 1. `db-postgres`
 2. `db-pgadmin`
@@ -12,8 +12,10 @@ With all six logical services enabled, expected long-running containers are:
 8. `db-elasticmq-ui`
 9. `db-cognito`
 10. `db-cognito-ui`
-11. `db-ui-gateway`
-12. `db-dashboard`
+11. `db-opensearch`
+12. `db-opensearch-dashboards`
+13. `db-ui-gateway`
+14. `db-dashboard`
 
 `db-minio-init` is temporary and removed after successful bucket initialization.
 
@@ -33,6 +35,8 @@ Disabled logical services remove their associated long-running containers, reduc
 | ElasticMQ UI | 512 MiB | 0.5 |
 | Cognito Local | 512 MiB | 0.5 |
 | Cognito Local UI | 256 MiB | 0.5 |
+| OpenSearch | 2 GiB (512 MiB JVM heap) | 2.0 |
+| OpenSearch Dashboards | 1 GiB | 1.0 |
 | UI gateway | 128 MiB | 0.5 |
 | Dashboard | 64 MiB | 0.25 |
 | MinIO init (temporary) | 256 MiB | 0.5 |
@@ -46,3 +50,5 @@ docker stats
 ```
 
 The deployment requires at least 5 GiB free disk and warns below 10 GiB. Docker JSON logs rotate by default at 10 MiB × 3 files per container. Persistent service volumes are intentionally not assigned small filesystem quotas because a full database volume can cause abrupt failures.
+
+OpenSearch remains disabled by default on 16 GiB development hosts. Enabling it adds up to 3 GiB in container memory ceilings; verify RAM/disk headroom and tune `OPENSEARCH_JAVA_OPTS` for larger workloads.

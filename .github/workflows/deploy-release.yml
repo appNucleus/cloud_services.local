@@ -143,6 +143,7 @@ jobs:
           if service_enabled neo4j; then pull_services+=(neo4j); fi
           if service_enabled elasticmq; then pull_services+=(elasticmq elasticmq-ui); fi
           if service_enabled cognito; then pull_services+=(cognito cognito-ui); fi
+          if service_enabled opensearch; then pull_services+=(opensearch opensearch-dashboards); fi
 
           if service_enabled minio; then
             minio_release='RELEASE.2025-10-15T17-29-55Z'

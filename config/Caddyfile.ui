@@ -32,3 +32,8 @@ https://{$PLATFORM_HOSTNAME}:{$COGNITO_UI_PORT} {
     tls internal
     reverse_proxy cognito-ui:8080
 }
+
+https://{$PLATFORM_HOSTNAME}:{$OPENSEARCH_DASHBOARDS_PORT} {
+    tls internal
+    reverse_proxy opensearch-dashboards:5601
+}

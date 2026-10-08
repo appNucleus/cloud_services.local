@@ -50,6 +50,7 @@ service_enabled() {
     minio) [[ "${ENABLE_MINIO:-true}" == "true" ]] ;;
     elasticmq) [[ "${ENABLE_ELASTICMQ:-true}" == "true" ]] ;;
     cognito) [[ "${ENABLE_COGNITO:-true}" == "true" ]] ;;
+    opensearch) [[ "${ENABLE_OPENSEARCH:-false}" == "true" ]] ;;
     *) echo "Unknown logical service: $service" >&2; return 2 ;;
   esac
 }
@@ -114,6 +115,14 @@ configure_service_selection() {
   else
     disabled_services+=(cognito cognito-ui)
     disabled_containers+=("${COGNITO_CONTAINER_NAME:-db-cognito}" "${COGNITO_UI_CONTAINER_NAME:-db-cognito-ui}")
+  fi
+
+  if service_enabled opensearch; then
+    enabled_profiles+=(opensearch)
+    enabled_services+=(opensearch opensearch-dashboards)
+  else
+    disabled_services+=(opensearch opensearch-dashboards)
+    disabled_containers+=("${OPENSEARCH_CONTAINER_NAME:-db-opensearch}" "${OPENSEARCH_DASHBOARDS_CONTAINER_NAME:-db-opensearch-dashboards}")
   fi
 
   local joined=""

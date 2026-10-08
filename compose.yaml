@@ -313,6 +313,70 @@ services:
       start_period: 5s
     networks: [db_net]
 
+
+  opensearch:
+    profiles: [opensearch]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
+    mem_limit: ${OPENSEARCH_MEMORY_LIMIT:-2g}
+    cpus: ${OPENSEARCH_CPU_LIMIT:-2.0}
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+    image: opensearchproject/opensearch:3.8.0
+    container_name: ${OPENSEARCH_CONTAINER_NAME:-db-opensearch}
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      OPENSEARCH_JAVA_OPTS: ${OPENSEARCH_JAVA_OPTS:--Xms512m -Xmx512m}
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-}
+    ports:
+      - "${DB_HOST_BIND:-0.0.0.0}:${OPENSEARCH_PORT:-9200}:9200"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -kfsS -u \"admin:$OPENSEARCH_INITIAL_ADMIN_PASSWORD\" https://127.0.0.1:9200/_cluster/health >/dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+    networks: [db_net]
+
+  opensearch-dashboards:
+    profiles: [opensearch]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: ${CONTAINER_PIDS_LIMIT:-512}
+    mem_limit: ${OPENSEARCH_DASHBOARDS_MEMORY_LIMIT:-1g}
+    cpus: ${OPENSEARCH_DASHBOARDS_CPU_LIMIT:-1.0}
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+    image: opensearchproject/opensearch-dashboards:3.8.0
+    container_name: ${OPENSEARCH_DASHBOARDS_CONTAINER_NAME:-db-opensearch-dashboards}
+    restart: unless-stopped
+    environment:
+      OPENSEARCH_HOSTS: '["https://opensearch:9200"]'
+      OPENSEARCH_SSL_VERIFICATIONMODE: none
+      OPENSEARCH_USERNAME: kibanaserver
+      OPENSEARCH_PASSWORD: kibanaserver
+      SERVER_HOST: 0.0.0.0
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:5601/api/status',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+    networks: [db_net]
+
   ui-gateway:
     security_opt:
       - no-new-privileges:true
@@ -331,6 +395,7 @@ services:
     environment:
       PLATFORM_HOSTNAME: ${PLATFORM_HOSTNAME:-aws.home.arpa}
       COGNITO_UI_PORT: ${COGNITO_UI_PORT:-9230}
+      OPENSEARCH_DASHBOARDS_PORT: ${OPENSEARCH_DASHBOARDS_PORT:-5601}
     ports:
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${PGADMIN_PORT:-5050}:5050"
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${REDISINSIGHT_PORT:-5540}:5540"
@@ -338,6 +403,7 @@ services:
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${MINIO_CONSOLE_PORT:-9001}:9001"
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${ELASTICMQ_UI_PORT:-9325}:9325"
       - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${COGNITO_UI_PORT:-9230}:${COGNITO_UI_PORT:-9230}"
+      - "${UI_GATEWAY_HOST_BIND:-0.0.0.0}:${OPENSEARCH_DASHBOARDS_PORT:-5601}:${OPENSEARCH_DASHBOARDS_PORT:-5601}"
     volumes:
       - ./config/Caddyfile.ui:/etc/caddy/Caddyfile:ro
       - ui_gateway_data:/data
@@ -439,6 +505,8 @@ volumes:
   cognito_data:
     external: true
     name: ${COGNITO_VOLUME_NAME:-db-cognito-data}
+  opensearch_data:
+    name: ${OPENSEARCH_VOLUME_NAME:-db-opensearch-data}
   ui_gateway_data:
     name: ${UI_GATEWAY_DATA_VOLUME_NAME:-db-ui-gateway-data}
   ui_gateway_config:

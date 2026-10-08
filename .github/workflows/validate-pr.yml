@@ -13,7 +13,7 @@ jobs:
   validate:
     name: Validate Compose profiles and Cognito persistence
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
@@ -53,6 +53,7 @@ jobs:
           set_value ENABLE_MINIO 'false'
           set_value ENABLE_ELASTICMQ 'false'
           set_value ENABLE_COGNITO 'true'
+          set_value ENABLE_OPENSEARCH 'false'
           echo "DEPLOY_ENV_FILE=$env_file" >> "$GITHUB_ENV"
 
       - name: Validate shell and YAML-facing configuration
@@ -64,12 +65,12 @@ jobs:
           bash ./scripts/generate-cognito-config.sh
           docker compose --env-file "$DEPLOY_ENV_FILE" --profile '*' config >/dev/null
 
-      - name: Validate all 64 service switch combinations
+      - name: Validate all 128 service switch combinations
         run: |
           set -euo pipefail
-          services=(postgres redis neo4j minio elasticmq cognito)
-          keys=(ENABLE_POSTGRES ENABLE_REDIS ENABLE_NEO4J ENABLE_MINIO ENABLE_ELASTICMQ ENABLE_COGNITO)
-          for mask in $(seq 0 63); do
+          services=(postgres redis neo4j minio elasticmq cognito opensearch)
+          keys=(ENABLE_POSTGRES ENABLE_REDIS ENABLE_NEO4J ENABLE_MINIO ENABLE_ELASTICMQ ENABLE_COGNITO ENABLE_OPENSEARCH)
+          for mask in $(seq 0 127); do
             env_file="$RUNNER_TEMP/combo-$mask.env"
             cp "$DEPLOY_ENV_FILE" "$env_file"
             profiles=()
@@ -86,6 +87,7 @@ jobs:
                   minio) expected+=(minio minio-init) ;;
                   elasticmq) expected+=(elasticmq elasticmq-ui) ;;
                   cognito) expected+=(cognito cognito-ui) ;;
+                  opensearch) expected+=(opensearch opensearch-dashboards) ;;
                 esac
               fi
               sed -i "s|^${keys[$i]}=.*|${keys[$i]}=${value}|" "$env_file"
@@ -103,7 +105,7 @@ jobs:
               exit 1
             fi
           done
-          echo "All 64 enable/disable combinations resolved correctly."
+          echo "All 128 enable/disable combinations resolved correctly."
 
       - name: Exercise Cognito enable-disable-reenable persistence
         run: |
@@ -210,3 +212,19 @@ jobs:
           docker port db-ui-gateway 9230/tcp | grep -Fq '9230'
           echo "Cognito API :9229 and HTTPS management UI :9230 are independently published: ok"
           echo "Cognito management UI CRUD and enable/disable/re-enable persistence test passed."
+
+      - name: Exercise OpenSearch search API and Dashboards
+        run: |
+          set -euo pipefail
+          cleanup() {
+            docker compose --env-file "$DEPLOY_ENV_FILE" --profile '*' down -v --remove-orphans >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          sudo sysctl -w vm.max_map_count=262144
+          sed -i 's/^ENABLE_COGNITO=.*/ENABLE_COGNITO=false/' "$DEPLOY_ENV_FILE"
+          sed -i 's/^ENABLE_OPENSEARCH=.*/ENABLE_OPENSEARCH=true/' "$DEPLOY_ENV_FILE"
+          sed -i "s/^OPENSEARCH_INITIAL_ADMIN_PASSWORD=.*/OPENSEARCH_INITIAL_ADMIN_PASSWORD=$(openssl rand -hex 24)/" "$DEPLOY_ENV_FILE"
+          bash ./scripts/validate-runtime-env.sh
+          bash ./scripts/start.sh --wait
+          bash ./scripts/verify.sh
+          echo "OpenSearch API, Dashboards HTTPS, and runtime selection verified."
